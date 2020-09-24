@@ -68,7 +68,8 @@ void loop() {
     Serial.print("Temperature 1: "); Serial.print(temp1);
     Serial.print(" | Temperature 2: "); Serial.print(temp2);
     Serial.print(" | Temperature 3: "); Serial.print(temp3);
-    Serial.print(" | Temperature 4: "); Serial.println(temp4);
+    Serial.print(" | Temperature 4: "); Serial.print(temp4);
+    Serial.print(" | Average: "); Serial.println((temp1 + temp2 + temp3 + temp4)/4.0);
     
     if(heater_state == 0) {
       if(temp1 < 10.0 || temp2 < 10.0 || temp3 < 10.0 || temp4 < 10.0) {
