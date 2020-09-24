@@ -60,15 +60,36 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   if(millis() >= next_heater_check) {
-
+    
+    temp1 = sensor1.readTempC();
+    temp2 = sensor2.readTempC();
+    temp3 = sensor3.readTempC();
+    temp4 = sensor4.readTempC();
+    Serial.print("Temperature 1: "); Serial.print(temp1);
+    Serial.print(" | Temperature 2: "); Serial.print(temp2);
+    Serial.print(" | Temperature 3: "); Serial.print(temp3);
+    Serial.print(" | Temperature 4: "); Serial.println(temp4);
+    
     if(heater_state == 0) {
-      if(sensor1.readTempC() < 10.0 || sensor2.readTempC() < 10.0) {
-        
+      if(temp1 < 10.0 || temp2 < 10.0 || temp3 < 10.0 || temp4 < 10.0) {
+        heater_state = 1;
+        digitalWrite(heater, HIGH);
+      } else if ( (temp1 + temp2 + temp3 + temp4) / 4.0 < 18.0) {
+        heater_state = 2;
+        digitalWrite(heater, HIGH);
       }
     } else if(heater_state == 1) {
-      
+      if(temp1 > 20.0 && temp2 > 20.0 && temp3 > 20.0 && temp4 > 20.0) {
+        heater_state = 0;
+        digitalWrite(heater, LOW);
+      }
     } else if(heater_state == 2) {
-      
+      if( (temp1 + temp2 + temp3 + temp4) / 4.0 > 22.0) {
+        heater_state = 0;
+        digitalWrite(heater, LOW);
+      }
     }
+
+    next_heater_check = millis() + 500; //Wait .5 seconds and check temperatures again
   }
 }
