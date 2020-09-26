@@ -13,7 +13,15 @@ temperature parameters:
 #include <Wire.h>
 #include <SparkFun_TMP117.h>
 
+//Pin definitions
 #define heater 1
+
+//Use these definitions to set configuration options
+#define MIN_TEMP_SINGLE 10.0
+#define MIN_TEMP_AVG 18.0
+#define MAX_TEMP_SINGLE 20.0
+#define MAX_TEMP_AVG 22.0
+#define HEATER_CHECK_TIME 500 //in milliseconds
 
 TMP117 sensor1;
 TMP117 sensor2;
@@ -72,25 +80,25 @@ void loop() {
     Serial.print(" | Average: "); Serial.println((temp1 + temp2 + temp3 + temp4)/4.0);
     
     if(heater_state == 0) {
-      if(temp1 < 10.0 || temp2 < 10.0 || temp3 < 10.0 || temp4 < 10.0) {
+      if(temp1 < MIN_TEMP_SINGLE || temp2 < MIN_TEMP_SINGLE || temp3 < MIN_TEMP_SINGLE || temp4 < MIN_TEMP_SINGLE) {
         heater_state = 1;
         digitalWrite(heater, HIGH);
-      } else if ( (temp1 + temp2 + temp3 + temp4) / 4.0 < 18.0) {
+      } else if ( (temp1 + temp2 + temp3 + temp4) / 4.0 < MIN_TEMP_AVG) {
         heater_state = 2;
         digitalWrite(heater, HIGH);
       }
     } else if(heater_state == 1) {
-      if(temp1 > 20.0 && temp2 > 20.0 && temp3 > 20.0 && temp4 > 20.0) {
+      if(temp1 > MAX_TEMP_SINGLE && temp2 > MAX_TEMP_SINGLE && temp3 > MAX_TEMP_SINGLE && temp4 > MAX_TEMP_SINGLE) {
         heater_state = 0;
         digitalWrite(heater, LOW);
       }
     } else if(heater_state == 2) {
-      if( (temp1 + temp2 + temp3 + temp4) / 4.0 > 22.0) {
+      if( (temp1 + temp2 + temp3 + temp4) / 4.0 > MAX_TEMP_AVG) {
         heater_state = 0;
         digitalWrite(heater, LOW);
       }
     }
 
-    next_heater_check = millis() + 500; //Wait .5 seconds and check temperatures again
+    next_heater_check = millis() + HEATER_CHECK_TIME; //Wait and check temperatures again
   }
 }
