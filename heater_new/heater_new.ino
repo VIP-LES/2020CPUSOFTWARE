@@ -5,7 +5,7 @@
 /*
 temperature parameters:
   Goal: Keep inside temperature at 20 Celsius
-  if any single sensore below 10, turn on heat for 30 seconds OR until all sensores are >= 20
+  if any single sensor below 10, turn on heat for 30 seconds OR until all sensors are >= 20
   if average is <= 18 turn on heat for 30 seconds OR untill average is 22
   else do nothing
 */
@@ -15,6 +15,8 @@ temperature parameters:
 
 //Pin definitions
 #define heater 1
+#define I2C_SDA 32
+#define I2C_SCL 33
 
 //Use these definitions to set configuration options
 #define MIN_TEMP_SINGLE 10.0
@@ -34,9 +36,10 @@ unsigned long next_heater_check;
 
 void setup() {
   // put your setup code here, to run once:
-  Wire.begin();
-  Wire.setClock(400000);
   Serial.begin(115200);
+  Serial.println("\n\n\n");
+  Wire.begin(I2C_SDA, I2C_SCL); //Can choose pretty much any pins on the esp32 for I2C
+  Wire.setClock(400000);
 
   if(sensor1.begin(0x48, Wire)) {
     Serial.println("Sensor 1 OK");
@@ -73,6 +76,8 @@ void loop() {
     temp2 = sensor2.readTempC();
     temp3 = sensor3.readTempC();
     temp4 = sensor4.readTempC();
+
+    Serial.print("Heater state: "); Serial.print(heater_state);
     Serial.print("Temperature 1: "); Serial.print(temp1);
     Serial.print(" | Temperature 2: "); Serial.print(temp2);
     Serial.print(" | Temperature 3: "); Serial.print(temp3);
