@@ -37,7 +37,6 @@ unsigned long next_heater_check;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  Serial.println("\n\n\n");
   Wire.begin(I2C_SDA, I2C_SCL); //Can choose pretty much any pins on the esp32 for I2C
   Wire.setClock(400000);
 
