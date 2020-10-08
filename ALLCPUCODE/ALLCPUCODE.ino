@@ -3,10 +3,12 @@
  */
 //#include stuff
 #include <Wire.h>
-#include <SparkFun_TMP117.h>
+#include <SparkFun_TMP117.h> //http://librarymanager/All#SparkFun_TMP117
+#include "SparkFun_Ublox_Arduino_Library.h" //http://librarymanager/All#SparkFun_Ublox_GPS
+#include <cmath> as std;
 
 //Pin definitions
-#define HEATER_OUTPUT 1
+#define HEATER_OUTPUT 13
 #define I2C_SDA 21
 #define I2C_SCL 22
 
@@ -22,10 +24,14 @@ TMP117 sensor1;
 TMP117 sensor2;
 TMP117 sensor3;
 TMP117 sensor4;
+SFE_UBLOX_GPS myGPS;
 
 float temp1, temp2, temp3, temp4;
+float latitude, longitude, altitude;
+byte SIV;
 int heater_state; //0 -> waiting for temperature drop | 1 -> heating because of single sensor | 2 -> heating because of sensor average
-unsigned long next_heater_check;
+unsigned long next_heater_check; //Timer to ensure temperature isn't checked too often
+unsigned long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox module.
 
 void setup() {
   //Communication stuff
@@ -40,7 +46,7 @@ void setup() {
   heater_state = 0;
   next_heater_check = millis();
   
-  //Initialize sensors if necessary
+  //Initialize sensors/modules if necessary
   if(sensor1.begin(0x48, Wire)) {
     Serial.println("Temp Sensor 1 OK");
   } else {
@@ -61,11 +67,19 @@ void setup() {
   } else {
     Serial.println("Sensor 4 failed to initialize");
   }
+  if (myGPS.begin(Wire) == false) //Connect to the Ublox module using Wire port
+  {
+    Serial.println(F("Ublox GPS not detected at default I2C address. Please check wiring. Freezing."));
+  }
+
+  myGPS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
+  myGPS.saveConfiguration(); //Save the current settings to flash and BBR
 }
 
 void loop() {
   //blocks of code for each subsystem are in separate functions for organization
   heater();
+  GPS();
   
 }
 
@@ -105,5 +119,43 @@ void heater() { //Contains the loop code for the heater system
     }
 
     next_heater_check = millis() + HEATER_CHECK_TIME; //Wait and check temperatures again
+  }
+}
+
+void GPS() {//Contains code for getting GPS position
+  //Query module only every second. Doing it more often will just cause I2C traffic.
+  //The module only responds when a new position is available
+  if (millis() - lastTime > 5000)
+  {
+    lastTime = millis(); //Update the timer
+    
+    latitude = myGPS.getLatitude();
+    Serial.print(F("Lat: "));
+    Serial.print((latitude)/10000000);
+    Serial.print(" degrees N;");
+
+    longitude = myGPS.getLongitude();
+    Serial.print(F(" Long: "));
+    if(longitude < 0)
+    {
+      Serial.print(abs(longitude/10000000));
+      Serial.print(F(" degrees W;"));
+    }
+    else
+    {
+      Serial.print(abs(longitude/10000000));
+      Serial.print(F(" degrees E;"));
+    }
+
+    altitude = myGPS.getAltitude();
+    Serial.print(F(" Alt: "));
+    Serial.print(altitude/1000);
+    Serial.print(F(" m;"));
+
+    SIV = myGPS.getSIV();
+    Serial.print(F(" Sats in view: "));
+    Serial.print(SIV);
+
+    Serial.println();
   }
 }
