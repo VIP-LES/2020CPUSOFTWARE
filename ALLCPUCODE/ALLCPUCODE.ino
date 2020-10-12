@@ -131,25 +131,26 @@ void GPS() {//Contains code for getting GPS position
     
     latitude = myGPS.getLatitude();
     Serial.print(F("Lat: "));
-    Serial.print((latitude)/10000000);
+    Serial.print(((latitude)/10000000),4);
+    //Serial.print((latitude));
     Serial.print(" degrees N;");
 
     longitude = myGPS.getLongitude();
     Serial.print(F(" Long: "));
     if(longitude < 0)
     {
-      Serial.print(abs(longitude/10000000));
+      Serial.print(abs(longitude/10000000),4);
       Serial.print(F(" degrees W;"));
     }
     else
     {
-      Serial.print(abs(longitude/10000000));
+      Serial.print(abs(longitude/10000000),4);
       Serial.print(F(" degrees E;"));
     }
 
     altitude = myGPS.getAltitude();
     Serial.print(F(" Alt: "));
-    Serial.print(altitude/1000);
+    Serial.print((altitude/1000),2);
     Serial.print(F(" m;"));
 
     SIV = myGPS.getSIV();
