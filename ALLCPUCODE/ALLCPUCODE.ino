@@ -5,7 +5,7 @@
 #include <Wire.h>
 #include <SparkFun_TMP117.h> //http://librarymanager/All#SparkFun_TMP117
 #include "SparkFun_Ublox_Arduino_Library.h" //http://librarymanager/All#SparkFun_Ublox_GPS
-#include <cmath> as std;
+#include <cmath> as std
 
 //Pin definitions
 #define HEATER_OUTPUT 13
@@ -13,11 +13,14 @@
 #define I2C_SCL 22
 
 //other configuration option definitions
-#define MIN_TEMP_SINGLE 10.0
+#define MIN_TEMP_SINGLE 10.0 //degrees celsius
 #define MIN_TEMP_AVG 18.0
 #define MAX_TEMP_SINGLE 20.0
 #define MAX_TEMP_AVG 22.0
 #define HEATER_CHECK_TIME 500 //in milliseconds
+#define GPS_CHECK_TIME 5000 
+#define DISPLACEMENT_AVG_FRAME 10
+#define DESCENT_RATE 10 //in meters per second
 
 //Global variables
 TMP117 sensor1;
@@ -27,8 +30,11 @@ TMP117 sensor4;
 SFE_UBLOX_GPS myGPS;
 
 float temp1, temp2, temp3, temp4;
-float latitude, longitude, altitude;
+float latitude, longitude, altitude, lastLatitude, lastLongitude;
 byte SIV;
+float pastLatitudeDisplacement[DISPLACEMENT_AVG_FRAME];
+float pastLongitudeDisplacement[DISPLACEMENT_AVG_FRAME];
+int avgFramePos = 0;
 int heater_state; //0 -> waiting for temperature drop | 1 -> heating because of single sensor | 2 -> heating because of sensor average
 unsigned long next_heater_check; //Timer to ensure temperature isn't checked too often
 unsigned long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox module.
@@ -125,9 +131,12 @@ void heater() { //Contains the loop code for the heater system
 void GPS() {//Contains code for getting GPS position
   //Query module only every second. Doing it more often will just cause I2C traffic.
   //The module only responds when a new position is available
-  if (millis() - lastTime > 5000)
+  if (millis() - lastTime > GPS_CHECK_TIME)
   {
     lastTime = millis(); //Update the timer
+
+    lastLatitude = latitude; //Save previous values for geofence subroutine
+    lastLongitude = longitude;
     
     latitude = myGPS.getLatitude();
     Serial.print(F("Lat: "));
@@ -158,5 +167,49 @@ void GPS() {//Contains code for getting GPS position
     Serial.print(SIV);
 
     Serial.println();
+
+    geofenceCheck(); //Run the geofence check only after the GPS subroutine has pulled new data from the GPS
   }
+}
+
+void geofenceCheck() {    //Run every time there's new GPS data available
+  //Record current latitude and longitude displacement for averaging
+  pastLatitudeDisplacement[avgFramePos] = latitude - lastLatitude;
+  pastLongitudeDisplacement[avgFramePos] = longitude - lastLongitude;
+  avgFramePos++;
+  avgFramePos = avgFramePos % DISPLACEMENT_AVG_FRAME;
+
+  //Determine average latitude and longitude drift rate
+  float latSum, longSum;
+  for(int i = 0; i < DISPLACEMENT_AVG_FRAME; i++){
+    latSum = latSum + pastLatitudeDisplacement[i];
+    longSum = longSum + pastLongitudeDisplacement[i];
+  }
+  float latDriftRate = latSum / (DISPLACEMENT_AVG_FRAME * GPS_CHECK_TIME);
+  float longDriftRate = longSum / (DISPLACEMENT_AVG_FRAME * GPS_CHECK_TIME);
+
+  //Find predicted latitude and longitude of landing position
+  float latPredicted = latDriftRate * (altitude / 1000 / DESCENT_RATE); //Altitude is given by the gps in mm
+  float longPredicted = longDriftRate * (altitude / 1000 / DESCENT_RATE);
+
+  //Find if cutdown is required
+  if( (latPredicted / 10000000) < 30.736 ) { //latitude and longitude are given by the GPS in degrees * 10^7
+    triggerCutdown();
+  } else if( (latPredicted / 10000000) < 32.851 ) {
+    if( (longPredicted / 10000000) > ((latPredicted / 10000000 / 2.2175) - 96.017) ) {
+      triggerCutdown();
+    }
+  } else if( (latPredicted / 10000000) < 35.031 ) {
+    if( (longPredicted / 10000000) > ((latPredicted / 10000000 / .63537) - 132.61) ) {
+      triggerCutdown();
+    }
+  } else {
+    if( (longPredicted / 10000000) > -77.468 ) {
+      triggerCutdown();
+    }
+  }
+}
+
+void triggerCutdown() {
+  //Placeholder for now
 }
