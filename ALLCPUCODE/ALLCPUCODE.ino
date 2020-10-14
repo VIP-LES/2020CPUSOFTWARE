@@ -6,11 +6,15 @@
 #include <SparkFun_TMP117.h> //http://librarymanager/All#SparkFun_TMP117
 #include "SparkFun_Ublox_Arduino_Library.h" //http://librarymanager/All#SparkFun_Ublox_GPS
 #include <cmath> as std
+#include <SPI.h>
+#include <SD.h>
+#include "FS.h"
 
 //Pin definitions
 #define HEATER_OUTPUT 13
 #define I2C_SDA 21
 #define I2C_SCL 22
+#define SD_CS 5
 
 //other configuration option definitions
 #define MIN_TEMP_SINGLE 10.0 //degrees celsius
@@ -38,6 +42,7 @@ int avgFramePos = 0;
 int heater_state; //0 -> waiting for temperature drop | 1 -> heating because of single sensor | 2 -> heating because of sensor average
 unsigned long next_heater_check; //Timer to ensure temperature isn't checked too often
 unsigned long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox module.
+String dataMessage;//SD Data
 
 void setup() {
   //Communication stuff
@@ -80,12 +85,38 @@ void setup() {
 
   myGPS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
   myGPS.saveConfiguration(); //Save the current settings to flash and BBR
+  
+  //SD card
+  SD.begin(SD_CS);  
+  if(!SD.begin(SD_CS)) {
+    Serial.println("Card Mount Failed");
+  }
+  uint8_t cardType = SD.cardType();
+  if(cardType == CARD_NONE) {
+    Serial.println("No SD card attached");
+  }
+  Serial.println("Initializing SD card...");
+  if (!SD.begin(SD_CS)) {
+    Serial.println("ERROR - SD card initialization failed!");
+  }
+  File file = SD.open("/data.txt");
+  if(!file) {
+    Serial.println("File doens't exist");
+    Serial.println("Creating file...");
+    writeFile(SD, "/data.txt", "Reading ID, Date, Hour, Temperature \r\n");
+  }
+  else {
+    Serial.println("File already exists");  
+  }
+  file.close();
+
 }
 
 void loop() {
   //blocks of code for each subsystem are in separate functions for organization
   heater();
   GPS();
+  logSDCard();
   
 }
 
@@ -209,6 +240,51 @@ void geofenceCheck() {    //Run every time there's new GPS data available
     }
   }
 }
+
+// Write the sensor readings on the SD card
+void logSDCard() {
+  dataMessage = String(heater_state) + "," + String(temp1) + "," + String(temp2) + "," + 
+                String(temp3) + "," + String(temp4) + "\r\n" + String(latitude) + "," + 
+                String(longitutde)+ "," + String(altitude) + "," + String(SIV);
+  Serial.print("Save data: ");
+  Serial.println(dataMessage);
+  appendFile(SD, "/data.txt", dataMessage.c_str());
+}
+
+// Write to the SD card (DON'T MODIFY THIS FUNCTION)
+void writeFile(fs::FS &fs, const char * path, const char * message) {
+  Serial.printf("Writing file: %s\n", path);
+
+  File file = fs.open(path, FILE_WRITE);
+  if(!file) {
+    Serial.println("Failed to open file for writing");
+    return;
+  }
+  if(file.print(message)) {
+    Serial.println("File written");
+  } else {
+    Serial.println("Write failed");
+  }
+  file.close();
+}
+
+// Append data to the SD card (DON'T MODIFY THIS FUNCTION)
+void appendFile(fs::FS &fs, const char * path, const char * message) {
+  Serial.printf("Appending to file: %s\n", path);
+
+  File file = fs.open(path, FILE_APPEND);
+  if(!file) {
+    Serial.println("Failed to open file for appending");
+    return;
+  }
+  if(file.print(message)) {
+    Serial.println("Message appended");
+  } else {
+    Serial.println("Append failed");
+  }
+  file.close();
+}
+
 
 void triggerCutdown() {
   //Placeholder for now
