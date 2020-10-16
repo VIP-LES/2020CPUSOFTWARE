@@ -11,10 +11,10 @@
 #include "FS.h"
 
 //Pin definitions
-#define HEATER_OUTPUT 13
+#define HEATER_OUTPUT 16
 #define I2C_SDA 21
 #define I2C_SCL 22
-#define SD_CS 5
+#define SD_CS 18
 
 //other configuration option definitions
 #define MIN_TEMP_SINGLE 10.0 //degrees celsius
@@ -245,7 +245,7 @@ void geofenceCheck() {    //Run every time there's new GPS data available
 void logSDCard() {
   dataMessage = String(heater_state) + "," + String(temp1) + "," + String(temp2) + "," + 
                 String(temp3) + "," + String(temp4) + "\r\n" + String(latitude) + "," + 
-                String(longitutde)+ "," + String(altitude) + "," + String(SIV);
+                String(longitude)+ "," + String(altitude) + "," + String(SIV);
   Serial.print("Save data: ");
   Serial.println(dataMessage);
   appendFile(SD, "/data.txt", dataMessage.c_str());
