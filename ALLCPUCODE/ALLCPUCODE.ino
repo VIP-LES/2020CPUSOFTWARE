@@ -1,4 +1,4 @@
-/* Author: 
+/* Authors: 
  * Fall 2020
  */
 //#include stuff
@@ -22,7 +22,7 @@
 #define MAX_TEMP_SINGLE 20.0
 #define MAX_TEMP_AVG 22.0
 #define HEATER_CHECK_TIME 500 //in milliseconds
-#define GPS_CHECK_TIME 5000 
+#define GPS_CHECK_TIME 5000 //Also affects frequency of mcu/gps time logging
 #define DISPLACEMENT_AVG_FRAME 10
 #define DESCENT_RATE 10 //in meters per second
 
@@ -99,11 +99,35 @@ void setup() {
   if (!SD.begin(SD_CS)) {
     Serial.println("ERROR - SD card initialization failed!");
   }
-  File file = SD.open("/data.txt");
+
+  //Create files for logging data
+  File file = SD.open("/temperature_data.csv");
   if(!file) {
-    Serial.println("File doens't exist");
+    Serial.println("File temperature_data.csv doesn't exist");
     Serial.println("Creating file...");
-    writeFile(SD, "/data.txt", "Reading ID, Date, Hour, Temperature \r\n");
+    writeFile(SD, "/temperature_data.csv", "GPS Time,Heater State,Temp 1,Temp 2,Temp 3,Temp 4\r\n");
+  }
+  else {
+    Serial.println("File already exists");  
+  }
+  file.close();
+  
+  file = SD.open("/GPS_data.csv");
+  if(!file) {
+    Serial.println("File GPS_data.csv doesn't exist");
+    Serial.println("Creating file...");
+    writeFile(SD, "/GPS_data.csv", "GPS Time,Latitude,Longitude,Altitude,SIV,Ground Speed,Heading\r\n");
+  }
+  else {
+    Serial.println("File already exists");  
+  }
+  file.close();
+
+  file = SD.open("/time_data.csv");
+  if(!file) {
+    Serial.println("File time_data.csv doesn't exist");
+    Serial.println("Creating file...");
+    writeFile(SD, "/time_data.csv", "Microcontroller Time,GPS Time,Ublox Time Valid,Ublox Date Valid\r\n");
   }
   else {
     Serial.println("File already exists");  
@@ -116,8 +140,7 @@ void loop() {
   //blocks of code for each subsystem are in separate functions for organization
   heater();
   GPS();
-  logSDCard();
-  
+    
 }
 
 void heater() { //Contains the loop code for the heater system
@@ -155,6 +178,8 @@ void heater() { //Contains the loop code for the heater system
       }
     }
 
+    logTemperature();
+    
     next_heater_check = millis() + HEATER_CHECK_TIME; //Wait and check temperatures again
   }
 }
@@ -200,6 +225,9 @@ void GPS() {//Contains code for getting GPS position
     Serial.println();
 
     geofenceCheck(); //Run the geofence check only after the GPS subroutine has pulled new data from the GPS
+
+    logGPS();
+    logTime();
   }
 }
 
@@ -241,14 +269,36 @@ void geofenceCheck() {    //Run every time there's new GPS data available
   }
 }
 
-// Write the sensor readings on the SD card
-void logSDCard() {
-  dataMessage = String(heater_state) + "," + String(temp1) + "," + String(temp2) + "," + 
-                String(temp3) + "," + String(temp4) + "\r\n" + String(latitude) + "," + 
-                String(longitude)+ "," + String(altitude) + "," + String(SIV);
-  Serial.print("Save data: ");
-  Serial.println(dataMessage);
-  appendFile(SD, "/data.txt", dataMessage.c_str());
+//Write temperature data to the corresponding file
+void logTemperature() {
+  String dataMessage = String(getGPSTime()) + "," + String(heater_state) + "," + String(temp1) +
+                       "," + String(temp2) + "," + String(temp3) + "," + String(temp4) + "\r\n";
+  appendFile(SD, "/temperature_data.csv", dataMessage.c_str());
+}
+
+//Write GPS data to the corresponding file
+void logGPS() {
+  String dataMessage = String(getGPSTime()) + "," + String(latitude) + "," + String(longitude) + "," +
+                       String(altitude) + "," + String(SIV) + "," + String(myGPS.getGroundSpeed()) + "," +
+                       String(myGPS.getHeading()) + "\r\n";
+  appendFile(SD, "/GPS_data.csv", dataMessage.c_str());
+}
+
+//Write mcu/gps time data to the corresponding file
+void logTime() {
+  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(myGPS.getTimeValid()) + 
+                       "," + String(myGPS.getDateValid()) + "\r\n";
+  appendFile(SD, "/time_data.csv", dataMessage.c_str());
+}
+
+void triggerCutdown() {
+  //Placeholder for now
+}
+
+//Get the time from the UBLOX module to the millisecond
+//Note that zero for this time is midnight on the first of the month, so it "overflows" back to zero then.
+unsigned long getGPSTime() {
+  return (((myGPS.getDay() * 24 + myGPS.getHour()) * 60 + myGPS.getMinute()) * 60 + myGPS.getSecond()) * 1000 + myGPS.getMillisecond();
 }
 
 // Write to the SD card (DON'T MODIFY THIS FUNCTION)
@@ -283,9 +333,4 @@ void appendFile(fs::FS &fs, const char * path, const char * message) {
     Serial.println("Append failed");
   }
   file.close();
-}
-
-
-void triggerCutdown() {
-  //Placeholder for now
 }
