@@ -14,7 +14,7 @@
 #define HEATER_OUTPUT 16
 #define I2C_SDA 21
 #define I2C_SCL 22
-#define SD_CS 18
+#define SD_CS 14
 
 //other configuration option definitions
 #define MIN_TEMP_SINGLE 10.0 //degrees celsius
