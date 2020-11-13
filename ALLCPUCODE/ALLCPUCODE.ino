@@ -304,7 +304,7 @@ void GPS() {//Contains code for getting GPS position
 
     if(myGPS.getTimeValid()) {
       last_valid_GPS_time = getGPSTime();
-      time_last_gps = millis();
+      time_last_GPS = millis();
     }
 
     checkTimeCutdown();
@@ -317,9 +317,9 @@ void readBatteryVoltage() {
     float pinb2v = map(analogRead(BATT_2), 0, 4095, 0, 3.3);
     float pinb3v = map(analogRead(BATT_3), 0, 4095, 0, 3.3);
   
-    batt_1_voltage = map(pin34v, 1.7949, 2.6923, 14, 21);
-    batt_2_voltage = map(pin35v, 1.958, 2.937, 2.8, 4.2);
-    batt_3_voltage = map(pin36v, 1.958, 2.937, 2.8, 4.2);
+    batt_1_voltage = map(pinb1v, 1.7949, 2.6923, 14, 21);
+    batt_2_voltage = map(pinb2v, 1.958, 2.937, 2.8, 4.2);
+    batt_3_voltage = map(pinb3v, 1.958, 2.937, 2.8, 4.2);
 
     next_battery_check = millis() + BATTERY_CHECK_TIME;
   }
@@ -394,7 +394,7 @@ void logGPS() {
 
 //Write battery data to the corresponding file
 void logBattery() {
-  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(battery_1_voltage) + "," + String(battery_2_voltage) + "," + String(battery_3_voltage) + "\r\n";
+  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(batt_1_voltage) + "," + String(batt_2_voltage) + "," + String(batt_3_voltage) + "\r\n";
   appendFile(SD, "/battery_data.csv", dataMessage.c_str());
 }
 
