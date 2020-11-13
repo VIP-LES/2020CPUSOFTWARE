@@ -10,6 +10,8 @@
 #include <SD.h>
 #include "FS.h"
 #include <WiFi.h>
+#include <WebServer.h>
+
 
 //Pin definitions
 #define HEATER_OUTPUT 16
@@ -44,28 +46,18 @@ int heater_state; //0 -> waiting for temperature drop | 1 -> heating because of 
 unsigned long next_heater_check; //Timer to ensure temperature isn't checked too often
 unsigned long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox module.
 String dataMessage;//SD Data
+boolean SDstatus;
 
-//Network Credentials & Wifi Set up
-const char* ssid = "REPLACE_WITH_YOUR_SSID";
-const char* password = "REPLACE_WITH_YOUR_PASSWORD";
+/* Put your SSID & Password */
+const char* ssid = "ESP32";  // Enter SSID here
+const char* password = "12345678";  //Enter Password here
 
-// Set web server port number to 80
-WiFiServer server(80);
-String header;
+/* Put IP Address details */
+IPAddress local_ip(192,168,1,1);
+IPAddress gateway(192,168,1,1);
+IPAddress subnet(255,255,255,0);
 
-String output26State = "off";
-String output27State = "off";
-
-// Assign output variables to GPIO pins
-const int output26 = 26;
-const int output27 = 27;
-
-// Current time
-unsigned long currentTime = millis();
-// Previous time
-unsigned long previousTime = 0; 
-// Define timeout time in milliseconds (example: 2000ms = 2s)
-const long timeoutTime = 2000;
+WebServer server(80);
 
 void setup() {
   //Communication stuff
@@ -76,24 +68,20 @@ void setup() {
   //Set pin modes
   pinMode(HEATER_OUTPUT, OUTPUT);
 
+  //wifi setup
+  WiFi.softAP(ssid, password);
+  WiFi.softAPConfig(local_ip, gateway, subnet);
+  delay(100);
+
+  server.on("/", handle_OnConnect);
+  server.onNotFound(handle_NotFound);
+  
+  server.begin();
+  Serial.println("HTTP server started");
+
   //Initialize variables if necessary
   heater_state = 0;
   next_heater_check = millis();
-
-  // Connect to Wi-Fi network with SSID and password
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  // Print local IP address and start web server
-  Serial.println("");
-  Serial.println("WiFi connected.");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-  server.begin();
   
   //Initialize sensors/modules if necessary
   if(sensor1.begin(0x48, Wire)) {
@@ -128,14 +116,17 @@ void setup() {
   SD.begin(SD_CS);  
   if(!SD.begin(SD_CS)) {
     Serial.println("Card Mount Failed");
+    SDstatus = false;
   }
   uint8_t cardType = SD.cardType();
   if(cardType == CARD_NONE) {
     Serial.println("No SD card attached");
+    SDstatus = false;
   }
   Serial.println("Initializing SD card...");
   if (!SD.begin(SD_CS)) {
     Serial.println("ERROR - SD card initialization failed!");
+    SDstatus = false;
   }
 
   //Create files for logging data
@@ -144,6 +135,7 @@ void setup() {
     Serial.println("File temperature_data.csv doesn't exist");
     Serial.println("Creating file...");
     writeFile(SD, "/temperature_data.csv", "GPS Time,Heater State,Temp 1,Temp 2,Temp 3,Temp 4\r\n");
+    SDstatus = true;
   }
   else {
     Serial.println("File already exists");  
@@ -155,6 +147,7 @@ void setup() {
     Serial.println("File GPS_data.csv doesn't exist");
     Serial.println("Creating file...");
     writeFile(SD, "/GPS_data.csv", "GPS Time,Latitude,Longitude,Altitude,SIV,Ground Speed,Heading\r\n");
+    
   }
   else {
     Serial.println("File already exists");  
@@ -175,62 +168,25 @@ void setup() {
 }
 
 void loop() {
-  //WIFI
-  WiFiClient client = server.available();   // Listen for incoming clients
-  if (client) {                             // If a new client connects,
-    currentTime = millis();
-    previousTime = currentTime;
-    Serial.println("New Client.");          // print a message out in the serial port
-    String currentLine = "";                // make a String to hold incoming data from the client
-    while (client.connected() && currentTime - previousTime <= timeoutTime) {  // loop while the client's connected
-      currentTime = millis();
-      if (client.available()) {             // if there's bytes to read from the client,
-        char c = client.read();             // read a byte, then
-        Serial.write(c);                    // print it out the serial monitor
-        header += c;
-        if (c == '\n') {                    // if the byte is a newline character
-          // if the current line is blank, you got two newline characters in a row.
-          // that's the end of the client HTTP request, so send a response:
-          if (currentLine.length() == 0) {
-            // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
-            client.println("HTTP/1.1 200 OK");
-            client.println("Content-type:text/html");
-            client.println("Connection: close");
-            client.println();
-            
-            // turns the GPIOs on and off
-            if (header.indexOf("GET /26/on") >= 0) {
-              Serial.println("GPIO 26 on");
-              output26State = "on";
-              digitalWrite(output26, HIGH);
-            } else if (header.indexOf("GET /26/off") >= 0) {
-              Serial.println("GPIO 26 off");
-              output26State = "off";
-              digitalWrite(output26, LOW);
-            } else if (header.indexOf("GET /27/on") >= 0) {
-              Serial.println("GPIO 27 on");
-              output27State = "on";
-              digitalWrite(output27, HIGH);
-            } else if (header.indexOf("GET /27/off") >= 0) {
-              Serial.println("GPIO 27 off");
-              output27State = "off";
-              digitalWrite(output27, LOW);
-            }
-            
-            // Display the HTML web page
-      // Clear the header variable
-      header = "";
-      // Close the connection
-      client.stop();
-      Serial.println("Client disconnected.");
-      Serial.println("");
-  }
-  
   //blocks of code for each subsystem are in separate functions for organization
   heater();
   GPS();
+  server.handleClient();
     
+}
+
+void handle_OnConnect() {
+  server.send(200, "text/html", SendHTML(SDstatus)); 
+}
+
+void handle_NotFound(){
+  server.send(404, "text/plain", "Not found");
+}
+
+String SendHTML(boolean SDstatus){
+ String s = " ";
+ return s;
+  
 }
 
 void heater() { //Contains the loop code for the heater system
