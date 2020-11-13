@@ -37,8 +37,8 @@
 //Global variables
 TMP117 sensor1;
 TMP117 sensor2;
-TMP117 sensor3;
-TMP117 sensor4;
+//TMP117 sensor3;
+//TMP117 sensor4;
 SFE_UBLOX_GPS myGPS;
 
 boolean launched; //This can be set to true through the web terminal right before the balloon is launched.  Ensures cutdown is not triggered while waiting on GPS fix.
@@ -110,7 +110,7 @@ void setup() {
   } else {
     Serial.println("Sensor 2 failed to initialize");
   }
-  if(sensor3.begin(0x4A, Wire)) {
+  /*if(sensor3.begin(0x4A, Wire)) {
     Serial.println("Sensor 3 OK");
   } else {
     Serial.println("Sensor 3 failed to initialize");
@@ -119,7 +119,7 @@ void setup() {
     Serial.println("Sensor 4 OK");
   } else {
     Serial.println("Sensor 4 failed to initialize");
-  }
+  }*/
   if (myGPS.begin(Wire) == false) //Connect to the Ublox module using Wire port
   {
     Serial.println(F("Ublox GPS not detected at default I2C address. Please check wiring. Freezing."));
@@ -150,7 +150,7 @@ void setup() {
   if(!file) {
     Serial.println("File temperature_data.csv doesn't exist");
     Serial.println("Creating file...");
-    writeFile(SD, "/temperature_data.csv", "MCU Time,GPS Time,Heater State,Temp 1,Temp 2,Temp 3,Temp 4\r\n");
+    writeFile(SD, "/temperature_data.csv", "MCU Time,GPS Time,Heater State,Temp 1,Temp 2\r\n"/*"MCU Time,GPS Time,Heater State,Temp 1,Temp 2,Temp 3,Temp 4\r\n"*/);
   }
   else {
     Serial.println("File already exists");  
@@ -221,31 +221,31 @@ void heater() { //Contains the loop code for the heater system
     
     temp1 = sensor1.readTempC();
     temp2 = sensor2.readTempC();
-    temp3 = sensor3.readTempC();
-    temp4 = sensor4.readTempC();
+    //temp3 = sensor3.readTempC();
+    //temp4 = sensor4.readTempC();
 
     Serial.print("Heater state: "); Serial.print(heater_state);
     Serial.print("Temperature 1: "); Serial.print(temp1);
     Serial.print(" | Temperature 2: "); Serial.print(temp2);
-    Serial.print(" | Temperature 3: "); Serial.print(temp3);
-    Serial.print(" | Temperature 4: "); Serial.print(temp4);
-    Serial.print(" | Average: "); Serial.println((temp1 + temp2 + temp3 + temp4)/4.0);
+    //Serial.print(" | Temperature 3: "); Serial.print(temp3);
+    //Serial.print(" | Temperature 4: "); Serial.print(temp4);
+    Serial.print(" | Average: "); Serial.println((temp1 + temp2 /*+ temp3 + temp4*/)/2.0/*4.0*/);
     
     if(heater_state == 0) {
-      if(temp1 < MIN_TEMP_SINGLE || temp2 < MIN_TEMP_SINGLE || temp3 < MIN_TEMP_SINGLE || temp4 < MIN_TEMP_SINGLE) {
+      if(temp1 < MIN_TEMP_SINGLE || temp2 < MIN_TEMP_SINGLE /*|| temp3 < MIN_TEMP_SINGLE || temp4 < MIN_TEMP_SINGLE*/) {
         heater_state = 1;
         digitalWrite(HEATER_OUTPUT, HIGH);
-      } else if ( (temp1 + temp2 + temp3 + temp4) / 4.0 < MIN_TEMP_AVG) {
+      } else if ( (temp1 + temp2 /*+ temp3 + temp4*/) / 2.0/*4.0*/ < MIN_TEMP_AVG) {
         heater_state = 2;
         digitalWrite(HEATER_OUTPUT, HIGH);
       }
     } else if(heater_state == 1) {
-      if(temp1 > MAX_TEMP_SINGLE && temp2 > MAX_TEMP_SINGLE && temp3 > MAX_TEMP_SINGLE && temp4 > MAX_TEMP_SINGLE) {
+      if(temp1 > MAX_TEMP_SINGLE && temp2 > MAX_TEMP_SINGLE /*&& temp3 > MAX_TEMP_SINGLE && temp4 > MAX_TEMP_SINGLE*/) {
         heater_state = 0;
         digitalWrite(HEATER_OUTPUT, LOW);
       }
     } else if(heater_state == 2) {
-      if( (temp1 + temp2 + temp3 + temp4) / 4.0 > MAX_TEMP_AVG) {
+      if( (temp1 + temp2 /*+ temp3 + temp4*/) / 2.0/*4.0*/ > MAX_TEMP_AVG) {
         heater_state = 0;
         digitalWrite(HEATER_OUTPUT, LOW);
       }
@@ -322,6 +322,8 @@ void readBatteryVoltage() {
     batt_3_voltage = map(pinb3v, 1.958, 2.937, 2.8, 4.2);
 
     next_battery_check = millis() + BATTERY_CHECK_TIME;
+
+    logBattery();
   }
 }
 
@@ -380,7 +382,7 @@ void checkTimeCutdown() {
 //Write temperature data to the corresponding file
 void logTemperature() {
   String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(heater_state) + "," + String(temp1) +
-                       "," + String(temp2) + "," + String(temp3) + "," + String(temp4) + "\r\n";
+                       "," + String(temp2) + /*"," + String(temp3) + "," + String(temp4) +*/ "\r\n";
   appendFile(SD, "/temperature_data.csv", dataMessage.c_str());
 }
 
