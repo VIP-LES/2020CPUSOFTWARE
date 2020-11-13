@@ -16,6 +16,9 @@
 #define I2C_SDA 21
 #define I2C_SCL 22
 #define SD_CS 14
+#define BATT_1 34 //21V nominal
+#define BATT_2 35 //4.2V nominal
+#define BATT_3 36 //4.2V nominal
 
 //other configuration option definitions
 #define MIN_TEMP_SINGLE 10.0 //degrees celsius
@@ -26,6 +29,8 @@
 #define GPS_CHECK_TIME 5000 //Also affects frequency of mcu/gps time logging
 #define DISPLACEMENT_AVG_FRAME 10
 #define DESCENT_RATE 10 //in meters per second
+#define TIME_UNTIL_CUTDOWN 21600000 //How long until time-delay cutdown is triggered, in ms
+#define BATTERY_CHECK_TIME 500 //in milliseconds
 
 //Global variables
 TMP117 sensor1;
@@ -34,6 +39,7 @@ TMP117 sensor3;
 TMP117 sensor4;
 SFE_UBLOX_GPS myGPS;
 
+boolean launched; //This can be set to true through the web terminal right before the balloon is launched.  Ensures cutdown is not triggered while waiting on GPS fix.
 float temp1, temp2, temp3, temp4;
 float latitude, longitude, altitude, lastLatitude, lastLongitude;
 byte SIV;
@@ -44,6 +50,13 @@ int heater_state; //0 -> waiting for temperature drop | 1 -> heating because of 
 unsigned long next_heater_check; //Timer to ensure temperature isn't checked too often
 unsigned long lastTime = 0; //Simple local timer. Limits amount of I2C traffic to Ublox module.
 String dataMessage;//SD Data
+unsigned long launch_time; //Set to the current GPS time whenever the balloon is launched.
+unsigned long last_valid_GPS_time;
+unsigned long time_last_GPS;
+float batt_1_voltage;
+float batt_2_voltage;
+float batt_3_voltage;
+unsigned long next_battery_check;
 
 //Network Credentials & Wifi Set up
 const char* ssid = "REPLACE_WITH_YOUR_SSID";
@@ -75,6 +88,9 @@ void setup() {
 
   //Set pin modes
   pinMode(HEATER_OUTPUT, OUTPUT);
+  pinMode(BATT_1, INPUT);
+  pinMode(BATT_2, INPUT);
+  pinMode(BATT_3, INPUT);
 
   //Initialize variables if necessary
   heater_state = 0;
@@ -143,7 +159,7 @@ void setup() {
   if(!file) {
     Serial.println("File temperature_data.csv doesn't exist");
     Serial.println("Creating file...");
-    writeFile(SD, "/temperature_data.csv", "GPS Time,Heater State,Temp 1,Temp 2,Temp 3,Temp 4\r\n");
+    writeFile(SD, "/temperature_data.csv", "MCU Time,GPS Time,Heater State,Temp 1,Temp 2,Temp 3,Temp 4\r\n");
   }
   else {
     Serial.println("File already exists");  
@@ -154,7 +170,18 @@ void setup() {
   if(!file) {
     Serial.println("File GPS_data.csv doesn't exist");
     Serial.println("Creating file...");
-    writeFile(SD, "/GPS_data.csv", "GPS Time,Latitude,Longitude,Altitude,SIV,Ground Speed,Heading\r\n");
+    writeFile(SD, "/GPS_data.csv", "MCU Time,GPS Time,Latitude,Longitude,Altitude,SIV,Ground Speed,Heading\r\n");
+  }
+  else {
+    Serial.println("File already exists");  
+  }
+  file.close();
+
+  file = SD.open("/battery_data.csv");
+  if(!file) {
+    Serial.println("File battery_data.csv doesn't exist");
+    Serial.println("Creating file...");
+    writeFile(SD, "/battery_data.csv", "MCU Time,GPS Time,Battery 1 Voltage,Battery 2 Voltage,Battery 3 Voltage\r\n");
   }
   else {
     Serial.println("File already exists");  
@@ -230,7 +257,8 @@ void loop() {
   //blocks of code for each subsystem are in separate functions for organization
   heater();
   GPS();
-    
+  readBatteryVoltage();
+  
 }
 
 void heater() { //Contains the loop code for the heater system
@@ -318,6 +346,27 @@ void GPS() {//Contains code for getting GPS position
 
     logGPS();
     logTime();
+
+    if(myGPS.getTimeValid()) {
+      last_valid_GPS_time = getGPSTime();
+      time_last_gps = millis();
+    }
+
+    checkTimeCutdown();
+  }
+}
+
+void readBatteryVoltage() {
+  if(next_battery_check < millis()) {
+    float pinb1v = map(analogRead(BATT_1), 0, 4095, 0, 3.3);
+    float pinb2v = map(analogRead(BATT_2), 0, 4095, 0, 3.3);
+    float pinb3v = map(analogRead(BATT_3), 0, 4095, 0, 3.3);
+  
+    batt_1_voltage = map(pin34v, 1.7949, 2.6923, 14, 21);
+    batt_2_voltage = map(pin35v, 1.958, 2.937, 2.8, 4.2);
+    batt_3_voltage = map(pin36v, 1.958, 2.937, 2.8, 4.2);
+
+    next_battery_check = millis() + BATTERY_CHECK_TIME;
   }
 }
 
@@ -359,19 +408,39 @@ void geofenceCheck() {    //Run every time there's new GPS data available
   }
 }
 
+void checkTimeCutdown() {
+  if(launched) {
+    if(myGPS.getTimeValid()) {
+      if( (last_valid_GPS_time - launch_time) > TIME_UNTIL_CUTDOWN ) {
+        triggerCutdown();
+      }
+    } else {
+      if( (last_valid_GPS_time - launch_time) + (millis() - time_last_GPS) > TIME_UNTIL_CUTDOWN ) {
+        triggerCutdown();
+      }
+    }
+  }
+}
+
 //Write temperature data to the corresponding file
 void logTemperature() {
-  String dataMessage = String(getGPSTime()) + "," + String(heater_state) + "," + String(temp1) +
+  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(heater_state) + "," + String(temp1) +
                        "," + String(temp2) + "," + String(temp3) + "," + String(temp4) + "\r\n";
   appendFile(SD, "/temperature_data.csv", dataMessage.c_str());
 }
 
 //Write GPS data to the corresponding file
 void logGPS() {
-  String dataMessage = String(getGPSTime()) + "," + String(latitude) + "," + String(longitude) + "," +
+  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(latitude) + "," + String(longitude) + "," +
                        String(altitude) + "," + String(SIV) + "," + String(myGPS.getGroundSpeed()) + "," +
                        String(myGPS.getHeading()) + "\r\n";
   appendFile(SD, "/GPS_data.csv", dataMessage.c_str());
+}
+
+//Write battery data to the corresponding file
+void logBattery() {
+  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(battery_1_voltage) + "," + String(battery_2_voltage) + "," + String(battery_3_voltage) + "\r\n";
+  appendFile(SD, "/battery_data.csv", dataMessage.c_str());
 }
 
 //Write mcu/gps time data to the corresponding file
