@@ -11,6 +11,7 @@
 #include "FS.h"
 #include <WiFi.h>
 #include <WebServer.h>
+#include <sstream>
 
 
 //Pin definitions
@@ -59,7 +60,8 @@ float batt_1_voltage;
 float batt_2_voltage;
 float batt_3_voltage;
 unsigned long next_battery_check;
-boolean SDstatus;
+boolean SDstatus = true;
+boolean GPSstatus = true;
 
 /* Put your SSID & Password */
 const char* ssid = "ESP32";  // Enter SSID here
@@ -90,6 +92,7 @@ void setup() {
   delay(100);
 
   server.on("/", handle_OnConnect);
+  server.on("/launched", handle_launched);
   server.onNotFound(handle_NotFound);
   
   server.begin();
@@ -122,6 +125,7 @@ void setup() {
   }*/
   if (myGPS.begin(Wire) == false) //Connect to the Ublox module using Wire port
   {
+    GPSstatus = false;
     Serial.println(F("Ublox GPS not detected at default I2C address. Please check wiring. Freezing."));
   }
 
@@ -195,24 +199,61 @@ void setup() {
 void loop() {
   //blocks of code for each subsystem are in separate functions for organization
   heater();
-  GPS();
-  server.handleClient();
-    
+  GPS();    
   readBatteryVoltage();
+  server.handleClient();
   
 }
 
 void handle_OnConnect() {
-  server.send(200, "text/html", SendHTML(SDstatus)); 
+  server.send(200, "text/html", SendHTML(launched, SDstatus, GPSstatus, batt_1_voltage, batt_2_voltage, batt_3_voltage, myGPS.getSIV())); 
+}
+
+void handle_launched() {
+  launched = true;
+  Serial.println("launched : TRUE");
+  server.send(200, "text/html", SendHTML(launched, SDstatus, GPSstatus, batt_1_voltage, batt_2_voltage, batt_3_voltage, myGPS.getSIV()));
+
 }
 
 void handle_NotFound(){
   server.send(404, "text/plain", "Not found");
 }
 
-String SendHTML(boolean SDstatus){
- String s = " ";
- return s;
+String SendHTML(boolean launched, boolean SDstatus, boolean GPSstatus, float batt_1_voltage, float batt_2_voltage, float batt_3_voltage, byte sat){
+  String ptr = "<!DOCTYPE html> <html>\n";
+  ptr +="<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n";
+  ptr +="<title>Dashboard</title>\n";
+  ptr +="<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n";
+  ptr +="body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n";
+  ptr +="p {font-size: 14px;color: #888;margin-bottom: 10px;}\n";
+  ptr +="</style>\n";
+  ptr +="</head>\n";
+  ptr +="<body>\n";
+  ptr +="<h1>ESP32 Web Server</h1>\n";
+  ptr +="<h3>Lightning at the Edge of Space VIP</h3>\n";
+  
+  if(launched)
+    {ptr +="<p>Launched</p>\n";}
+  else
+    {ptr +="<p>Not Launched</p>\n";}
+
+  if(SDstatus)
+    {ptr +="<p>SD is connected and writing to files successfully</p>\n";}
+  else
+    {ptr +="<p>SD writing is not properly working</p>\n";}
+  if(GPSstatus)
+    {ptr +="<p>GPS is connected and working properly</p>\n";}
+  else
+    {ptr +="<p>GPS is not properly working</p>\n";}
+    
+  ptr +=  "<p>Battery 1 voltage: " + String(batt_1_voltage) + "</p>\n";
+  ptr +=  "<p>Battery 2 voltage: " + String(batt_2_voltage) + "</p>\n";
+  ptr +=  "<p>Battery 3 voltage: " + String(batt_3_voltage) + "</p>\n";
+  ptr +=  "<p>GPS satellite: " + String(sat) + "</p>\n";
+  ptr +="</body>\n";
+  ptr +="</html>\n";
+  return ptr;
   
 }
 
