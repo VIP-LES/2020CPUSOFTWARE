@@ -42,7 +42,7 @@ TMP117 sensor2;
 //TMP117 sensor4;
 SFE_UBLOX_GPS myGPS;
 
-boolean launched; //This can be set to true through the web terminal right before the balloon is launched.  Ensures cutdown is not triggered while waiting on GPS fix.
+boolean launched = false; //This can be set to true through the web terminal right before the balloon is launched.  Ensures cutdown is not triggered while waiting on GPS fix.
 float temp1, temp2, temp3, temp4;
 float latitude, longitude, altitude, lastLatitude, lastLongitude;
 byte SIV;
