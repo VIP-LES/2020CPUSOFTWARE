@@ -12,6 +12,7 @@
 #include <WiFi.h>
 //#include <WebServer.h>
 #include <sstream>
+#include <HardwareSerial.h>//FROM MASTER CODE
 
 
 //Pin definitions
@@ -42,6 +43,8 @@ TMP117 sensor2;
 //TMP117 sensor3;
 //TMP117 sensor4;
 SFE_UBLOX_GPS myGPS;
+HardwareSerial sender(1); //can be Serial2 as well, just use proper pins FROM MASTER CODE
+
 
 boolean launched = false; //This can be set to true through the web terminal right before the balloon is launched.  Ensures cutdown is not triggered while waiting on GPS fix.
 float temp1, temp2, temp3, temp4;
@@ -85,7 +88,7 @@ void setup() {
   Wire.begin(I2C_SDA, I2C_SCL); //Can choose pretty much any pins on the esp32 for I2C
   Wire.setClock(400000);
   Serial.begin(115200);
-  
+  sender.begin(115200, SERIAL_8N1, 17, 16);//open the other serial port FROM MASTER CODE
   //Set pin modes
   pinMode(HEATER_OUTPUT, OUTPUT);
   pinMode(CUTDOWN_SIGNAL, OUTPUT);
@@ -460,7 +463,8 @@ void checkTimeCutdown() {
 void logTemperature() {
   String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(heater_state) + "," + String(temp1) +
                        "," + String(temp2) + /*"," + String(temp3) + "," + String(temp4) +*/ "\r\n";
-  appendFile(SD, "/temperature_data.csv", dataMessage.c_str());
+  //appendFile(SD, "/temperature_data.csv", dataMessage.c_str());
+  sender.println(dataMessage); //send directly to sender
 }
 
 //Write GPS data to the corresponding file
@@ -468,20 +472,23 @@ void logGPS() {
   String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(latitude) + "," + String(longitude) + "," +
                        String(altitude) + "," + String(SIV) + "," + String(myGPS.getGroundSpeed()) + "," +
                        String(myGPS.getHeading()) + "\r\n";
-  appendFile(SD, "/GPS_data.csv", dataMessage.c_str());
+  //appendFile(SD, "/GPS_data.csv", dataMessage.c_str());
+  sender.println(dataMessage);//send dierctly to sender
 }
 
 //Write battery data to the corresponding file
 void logBattery() {
   String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(batt_1_voltage) + "," + String(batt_2_voltage) + "," + String(batt_3_voltage) + "\r\n";
-  appendFile(SD, "/battery_data.csv", dataMessage.c_str());
+  //appendFile(SD, "/battery_data.csv", dataMessage.c_str());
+  sender.println(dataMessage);//send directly to sender
 }
 
 //Write mcu/gps time data to the corresponding file
 void logTime() {
   String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(myGPS.getTimeValid()) + 
                        "," + String(myGPS.getDateValid()) + "\r\n";
-  appendFile(SD, "/time_data.csv", dataMessage.c_str());
+  //appendFile(SD, "/time_data.csv", dataMessage.c_str());
+  sender.println(dataMessage);//send directly to sender
 }
 
 void triggerCutdown()
