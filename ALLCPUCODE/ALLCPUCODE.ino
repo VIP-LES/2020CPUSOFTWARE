@@ -254,9 +254,9 @@ void wifi() {
             client.println("<h1>ESP32 Web Server</h1>\n");
             client.println("<h3>Lightning at the Edge of Space VIP</h3>\n");
               if (!launched) {
-                client.println("<p><a href=\"/launched/off\"><button class=\"button\">PRESS TO LAUNCH</button></a></p>");
+                client.println("<p><a href=\"/launched/on\"><button class=\"button\">PRESS TO LAUNCH</button></a></p>");
               } else {
-                client.println("<p><a href=\"/launched/on\"><button class=\"button button2\">LAUNCHED</button></a></p>");
+                client.println("<p><a href=\"/launched/off\"><button class=\"button button2\">LAUNCHED</button></a></p>");
               } 
         
 
