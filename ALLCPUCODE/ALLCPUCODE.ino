@@ -235,10 +235,9 @@ void wifi() {
             if (header.indexOf("GET launched") >= 0) {
               Serial.println("it is launched");
               launched = true;
-            } else if (header.indexOf("GET /notlaunched") >= 0) {
+            } else if (header.indexOf("GET notlaunched") >= 0) {
               Serial.println("notlaunched");
               launched = false;
-              launched = true;
             }
              
             // Display the HTML web page  

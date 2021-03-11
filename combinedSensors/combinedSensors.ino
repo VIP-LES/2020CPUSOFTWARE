@@ -16,7 +16,7 @@ float temp = 0;                     // Temperature Value either Static or Sensor
 int tempSensor = 0;
 
 // Analog IO Pin Connected to OUT
-#define HIH4030_OUT A0
+#define HIH4030_OUT 4
 
 // Supply Voltage - Typically 5 V
 #define HIH4030_SUPPLY 5
