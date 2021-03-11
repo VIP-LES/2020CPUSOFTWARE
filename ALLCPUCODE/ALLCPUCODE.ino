@@ -231,15 +231,14 @@ void wifi() {
             client.println("Connection: close");
             client.println();
              
-            // turns the GPIOs on and off
-            if (header.indexOf("GET /26/on") >= 0) {
-              Serial.println("GPIO 26 on");
-              output26State = "on";
-              digitalWrite(output26, HIGH);
-            } else if (header.indexOf("GET /26/off") >= 0) {
-              Serial.println("GPIO 26 off");
-              output26State = "off";
-              digitalWrite(output26, LOW);
+            // turns the launched on and off
+            if (header.indexOf("GET launched") >= 0) {
+              Serial.println("it is launched");
+              launched = true;
+            } else if (header.indexOf("GET /notlaunched") >= 0) {
+              Serial.println("notlaunched");
+              launched = false;
+              launched = true;
             }
              
             // Display the HTML web page  
@@ -247,6 +246,7 @@ void wifi() {
             client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n");
             client.println("<title>Dashboard</title>\n");
             client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n");
+            client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px;");
             client.println("body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n");
             client.println("p {font-size: 14px;color: #888;margin-bottom: 10px;}\n");
             client.println("</style>\n");
@@ -254,10 +254,12 @@ void wifi() {
             client.println("<body>\n");
             client.println("<h1>ESP32 Web Server</h1>\n");
             client.println("<h3>Lightning at the Edge of Space VIP</h3>\n");
-              if(launched)
-                {client.println("<p>Launched</p>\n");}
-              else
-                {client.println("<p>Not Launched</p>\n");}
+              if (!launched) {
+                client.println("<p><a href=\"/notlaunched\"><button class=\"button\">PRESS TO LAUNCH</button></a></p>");
+              } else {
+                client.println("<p><a href=\"/launched\"><button class=\"button button2\">LAUNCHED</button></a></p>");
+              } 
+        
 
               if(SDstatus)
                 {client.println("<p>SD is connected and writing to files successfully</p>\n");}
