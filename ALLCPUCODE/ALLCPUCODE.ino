@@ -261,12 +261,6 @@ void wifi() {
               } else {
                 client.println("<p><a href=\"/launched/off\"><button class=\"button button2\">LAUNCHED</button></a></p>");
               } 
-        
-
-              if(SDstatus)
-                {client.println("<p>SD is connected and writing to files successfully</p>\n");}
-              else
-                {client.println("<p>SD writing is not properly working</p>\n");}
               if(GPSstatus)
                 {client.println("<p>GPS is connected and working properly</p>\n");}
               else
@@ -448,6 +442,8 @@ void geofenceCheck() {    //Run every time there's new GPS data available
 
 void checkTimeCutdown() {
   if(launched) {
+    Serial.print("We have launched \n");
+    sender.println("We have launched \n");
     if(myGPS.getTimeValid()) {
       if( (last_valid_GPS_time - launch_time) > TIME_UNTIL_CUTDOWN ) {
         triggerCutdown();
