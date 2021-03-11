@@ -12,7 +12,6 @@
 #include <WiFi.h>
 //#include <WebServer.h>
 #include <sstream>
-#include <HardwareSerial.h>//FROM MASTER CODE
 
 
 //Pin definitions
@@ -43,8 +42,6 @@ TMP117 sensor2;
 //TMP117 sensor3;
 //TMP117 sensor4;
 SFE_UBLOX_GPS myGPS;
-HardwareSerial sender(1); //can be Serial2 as well, just use proper pins FROM MASTER CODE
-
 
 boolean launched = false; //This can be set to true through the web terminal right before the balloon is launched.  Ensures cutdown is not triggered while waiting on GPS fix.
 float temp1, temp2, temp3, temp4;
@@ -64,8 +61,9 @@ float batt_1_voltage;
 float batt_2_voltage;
 float batt_3_voltage;
 unsigned long next_battery_check;
-boolean SDstatus = true;
-boolean GPSstatus = true;
+boolean GPSstatus = false;
+float longitudeHTML;
+float latitudeHTML;
 
 /* Put your SSID & Password */
 const char* ssid = "ESP32";  // Enter SSID here
@@ -88,7 +86,7 @@ void setup() {
   Wire.begin(I2C_SDA, I2C_SCL); //Can choose pretty much any pins on the esp32 for I2C
   Wire.setClock(400000);
   Serial.begin(115200);
-  sender.begin(115200, SERIAL_8N1, 17, 16);//open the other serial port FROM MASTER CODE
+  
   //Set pin modes
   pinMode(HEATER_OUTPUT, OUTPUT);
   pinMode(CUTDOWN_SIGNAL, OUTPUT);
@@ -134,7 +132,6 @@ void setup() {
   }*/
   if (myGPS.begin(Wire) == false) //Connect to the Ublox module using Wire port
   {
-    GPSstatus = false;
     Serial.println(F("Ublox GPS not detected at default I2C address. Please check wiring. Freezing."));
   }
 
@@ -261,10 +258,18 @@ void wifi() {
               } else {
                 client.println("<p><a href=\"/launched/off\"><button class=\"button button2\">LAUNCHED</button></a></p>");
               } 
+        
+
+              if(SDstatus)
+                {client.println("<p>SD is connected and writing to files successfully</p>\n");}
+              else
+                {client.println("<p>SD writing is not properly working</p>\n");}
               if(GPSstatus)
                 {client.println("<p>GPS is connected and working properly</p>\n");}
               else
                 {client.println("<p>GPS is not properly working</p>\n");}
+              client.println("<p>Longitude: %s </p>", longitudeHTML);
+              client.println("<p>Latitude: %s </p>", latitudeHTML);
     
             // The HTTP response ends with another blank line
             client.println();
@@ -360,6 +365,8 @@ void GPS() {//Contains code for getting GPS position
       Serial.print(abs(longitude/10000000),4);
       Serial.print(F(" degrees E;"));
     }
+    longitudeHTML = longitude;
+    latitudeHTML = latitude;
 
     altitude = myGPS.getAltitude();
     Serial.print(F(" Alt: "));
@@ -369,6 +376,9 @@ void GPS() {//Contains code for getting GPS position
     SIV = myGPS.getSIV();
     Serial.print(F(" Sats in view: "));
     Serial.print(SIV);
+    if(SIV > 3){
+      GPSstatus = true;
+    }
 
     Serial.println();
 
@@ -442,8 +452,6 @@ void geofenceCheck() {    //Run every time there's new GPS data available
 
 void checkTimeCutdown() {
   if(launched) {
-    Serial.print("We have launched \n");
-    sender.println("We have launched \n");
     if(myGPS.getTimeValid()) {
       if( (last_valid_GPS_time - launch_time) > TIME_UNTIL_CUTDOWN ) {
         triggerCutdown();
@@ -460,8 +468,7 @@ void checkTimeCutdown() {
 void logTemperature() {
   String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(heater_state) + "," + String(temp1) +
                        "," + String(temp2) + /*"," + String(temp3) + "," + String(temp4) +*/ "\r\n";
-  //appendFile(SD, "/temperature_data.csv", dataMessage.c_str());
-  sender.println(dataMessage); //send directly to sender
+  appendFile(SD, "/temperature_data.csv", dataMessage.c_str());
 }
 
 //Write GPS data to the corresponding file
@@ -469,23 +476,20 @@ void logGPS() {
   String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(latitude) + "," + String(longitude) + "," +
                        String(altitude) + "," + String(SIV) + "," + String(myGPS.getGroundSpeed()) + "," +
                        String(myGPS.getHeading()) + "\r\n";
-  //appendFile(SD, "/GPS_data.csv", dataMessage.c_str());
-  sender.println(dataMessage);//send dierctly to sender
+  appendFile(SD, "/GPS_data.csv", dataMessage.c_str());
 }
 
 //Write battery data to the corresponding file
 void logBattery() {
   String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(batt_1_voltage) + "," + String(batt_2_voltage) + "," + String(batt_3_voltage) + "\r\n";
-  //appendFile(SD, "/battery_data.csv", dataMessage.c_str());
-  sender.println(dataMessage);//send directly to sender
+  appendFile(SD, "/battery_data.csv", dataMessage.c_str());
 }
 
 //Write mcu/gps time data to the corresponding file
 void logTime() {
   String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(myGPS.getTimeValid()) + 
                        "," + String(myGPS.getDateValid()) + "\r\n";
-  //appendFile(SD, "/time_data.csv", dataMessage.c_str());
-  sender.println(dataMessage);//send directly to sender
+  appendFile(SD, "/time_data.csv", dataMessage.c_str());
 }
 
 void triggerCutdown()
