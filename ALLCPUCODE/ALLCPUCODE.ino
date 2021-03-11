@@ -232,10 +232,10 @@ void wifi() {
             client.println();
              
             // turns the launched on and off
-            if (header.indexOf("GET launched") >= 0) {
+            if (header.indexOf("GET /launched/on") >= 0) {
               Serial.println("it is launched");
               launched = true;
-            } else if (header.indexOf("GET notlaunched") >= 0) {
+            } else if (header.indexOf("GET /launched/off") >= 0) {
               Serial.println("notlaunched");
               launched = false;
             }
@@ -254,9 +254,9 @@ void wifi() {
             client.println("<h1>ESP32 Web Server</h1>\n");
             client.println("<h3>Lightning at the Edge of Space VIP</h3>\n");
               if (!launched) {
-                client.println("<p><a href=\"/notlaunched\"><button class=\"button\">PRESS TO LAUNCH</button></a></p>");
+                client.println("<p><a href=\"/launched/off\"><button class=\"button\">PRESS TO LAUNCH</button></a></p>");
               } else {
-                client.println("<p><a href=\"/launched\"><button class=\"button button2\">LAUNCHED</button></a></p>");
+                client.println("<p><a href=\"/launched/on\"><button class=\"button button2\">LAUNCHED</button></a></p>");
               } 
         
 
