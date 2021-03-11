@@ -24,9 +24,10 @@ int tempSensor = 0;
 // Library Variables
 HIH4030 sensorSpecs(HIH4030_OUT, HIH4030_SUPPLY);
 
-void setup(void){
+void setup(void)
+{
   
-  Serial.begin(9600);               // Serial Port
+  Serial.begin(115200);               // Serial Port
   Wire.begin();                     // I2C: Utilized by TMP102 Temperature Sensor
   
 }
@@ -53,7 +54,7 @@ void displaySensorDetails(void)
   delay(500);
 
 
-  Serial.begin(9600);
+  Serial.begin(115200);
   Serial.println("Adafruit_MPL3115A2 test!");
   Wire.begin();
 

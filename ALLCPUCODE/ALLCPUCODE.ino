@@ -10,18 +10,19 @@
 #include <SD.h>
 #include "FS.h"
 #include <WiFi.h>
-#include <WebServer.h>
+//#include <WebServer.h>
 #include <sstream>
 
 
 //Pin definitions
-#define HEATER_OUTPUT 16
+#define HEATER_OUTPUT 25
+#define CUTDOWN_SIGNAL 26
 #define I2C_SDA 21
 #define I2C_SCL 22
 #define SD_CS 14
-#define BATT_1 34 //21V nominal
-#define BATT_2 35 //4.2V nominal
-#define BATT_3 36 //4.2V nominal
+#define BATT_1 33 //21V nominal
+#define BATT_2 34 //4.2V nominal
+#define BATT_3 35 //4.2V nominal
 
 //other configuration option definitions
 #define MIN_TEMP_SINGLE 10.0 //degrees celsius
@@ -68,7 +69,7 @@ const char* ssid = "ESP32";  // Enter SSID here
 const char* password = "12345678";  //Enter Password here
 
 
-WebServer server(80);
+WiFiServer server(80);
 String header;
 String output26State = "off";
 String output27State = "off";
@@ -84,15 +85,10 @@ void setup() {
   Wire.begin(I2C_SDA, I2C_SCL); //Can choose pretty much any pins on the esp32 for I2C
   Wire.setClock(400000);
   Serial.begin(115200);
-  // Initialize the output variables as outputs
-  pinMode(output26, OUTPUT);
-  pinMode(output27, OUTPUT);
-  // Set outputs to LOW
-  digitalWrite(output26, LOW);
-  digitalWrite(output27, LOW);
   
   //Set pin modes
   pinMode(HEATER_OUTPUT, OUTPUT);
+  pinMode(CUTDOWN_SIGNAL, OUTPUT);
   pinMode(BATT_1, INPUT);
   pinMode(BATT_2, INPUT);
   pinMode(BATT_3, INPUT);
@@ -215,7 +211,6 @@ void loop() {
 }
 
 void wifi() {
-  server.send(200, "text/html", SendHTML(launched, SDstatus, GPSstatus, batt_1_voltage, batt_2_voltage, batt_3_voltage, myGPS.getSIV())); 
   WiFiClient client = server.available();   // Listen for incoming clients
   if (client) {                             // If a new client connects,
     Serial.println("New Client.");          // print a message out in the serial port
@@ -489,8 +484,11 @@ void logTime() {
   appendFile(SD, "/time_data.csv", dataMessage.c_str());
 }
 
-void triggerCutdown() {
+void triggerCutdown()
+{
   //Placeholder for now
+  
+  digitalWrite(CUTDOWN_SIGNAL, HIGH);
 }
 
 //Get the time from the UBLOX module to the millisecond
