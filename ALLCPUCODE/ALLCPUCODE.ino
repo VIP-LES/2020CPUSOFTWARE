@@ -69,6 +69,7 @@ float latitudeHTML;
 const char* ssid = "ESP32";  // Enter SSID here
 const char* password = "12345678";  //Enter Password here
 
+boolean SDstatus = false;
 
 WiFiServer server(80);
 String header;
@@ -258,18 +259,12 @@ void wifi() {
               } else {
                 client.println("<p><a href=\"/launched/off\"><button class=\"button button2\">LAUNCHED</button></a></p>");
               } 
-        
-
-              if(SDstatus)
-                {client.println("<p>SD is connected and writing to files successfully</p>\n");}
-              else
-                {client.println("<p>SD writing is not properly working</p>\n");}
               if(GPSstatus)
                 {client.println("<p>GPS is connected and working properly</p>\n");}
               else
                 {client.println("<p>GPS is not properly working</p>\n");}
-              client.println("<p>Longitude: %s </p>", longitudeHTML);
-              client.println("<p>Latitude: %s </p>", latitudeHTML);
+              client.println("<p>Longitude:" + String(longitudeHTML) + " </p> \n");
+              client.println("<p>Latitude:" + String(latitudeHTML) + " </p> \n");
     
             // The HTTP response ends with another blank line
             client.println();
