@@ -13,6 +13,7 @@
 //#include <WebServer.h>
 #include <sstream>
 #include <HardwareSerial.h>
+#include <math.h>
 
 
 //Pin definitions
@@ -36,6 +37,7 @@
 #define DESCENT_RATE 10 //in meters per second
 #define TIME_UNTIL_CUTDOWN 21600000 //How long until time-delay cutdown is triggered, in ms
 #define BATTERY_CHECK_TIME 500 //in milliseconds
+#define CUTDOWN_DISTANCE 222 //in km
 
 //Global variables
 TMP117 sensor1;
@@ -44,6 +46,10 @@ TMP117 sensor2;
 //TMP117 sensor4;
 SFE_UBLOX_GPS myGPS;
 
+float disX;
+float disY;
+float fixedLong = 34.15604;
+float fixedLat = -84.69975;
 boolean launched = false; //This can be set to true through the web terminal right before the balloon is launched.  Ensures cutdown is not triggered while waiting on GPS fix.
 float temp1, temp2, temp3, temp4;
 float latitude, longitude, altitude, lastLatitude, lastLongitude;
@@ -339,6 +345,7 @@ void heater() { //Contains the loop code for the heater system
 void GPS() {//Contains code for getting GPS position
   //Query module only every second. Doing it more often will just cause I2C traffic.
   //The module only responds when a new position is available
+
   if (millis() - lastTime > GPS_CHECK_TIME)
   {
     lastTime = millis(); //Update the timer
@@ -413,6 +420,16 @@ void readBatteryVoltage() {
 
 void geofenceCheck() {    //Run every time there's new GPS data available
   //Record current latitude and longitude displacement for averaging
+
+  disY = latitude - fixedLat;
+  disX = longitude - fixedLong;
+
+  float distance = sqrt(sq(disY) + sq(disX));
+
+  if (distance >= CUTDOWN_DISTANCE) {
+    triggerCutdown();
+  }
+ 
   pastLatitudeDisplacement[avgFramePos] = latitude - lastLatitude;
   pastLongitudeDisplacement[avgFramePos] = longitude - lastLongitude;
   avgFramePos++;
