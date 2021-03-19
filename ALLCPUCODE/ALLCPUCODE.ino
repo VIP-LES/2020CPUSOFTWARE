@@ -1,4 +1,4 @@
-g/* Authors: 
+/* Authors: 
  * Fall 2020
  */
 //#include stuff

@@ -35,7 +35,6 @@ HIH4030 sensorSpecs(HIH4030_OUT, HIH4030_SUPPLY);
 
 
 VEML6075 uv; // Create a VEML6075 object
-ADXL345 adxl = ADXL345();
 
 
 
@@ -45,10 +44,10 @@ HardwareSerial receiver(2);
 
 TMP117 sensor1;
 
+String dataMessage;
 
 
-
-
+float UVA; float UVB; float UV_INDEX;
 
 
 
@@ -60,10 +59,39 @@ void setup()
   Wire.begin();                     // I2C: Utilized by TMP102 Temperature Sensor
 
 
-  if(sensor1.begin(0x49, Wire)) {
-      Serial.println("Temp Sensor 1 OK");
-    } else {
-      Serial.println("Temp Sensor 1 failed to initialize");
+  //TMP117
+  if(sensor1.begin(0x48, Wire)) {
+    Serial.println("Temp Sensor 117 OK");
+  } else {
+    Serial.println("Temp Sensor 117 failed to initialize");
+  }
+
+
+  //HMC MAGNETOMETER
+  Serial.println("HMC5883 Magnetometer Test"); Serial.println("");
+  /* Initialise the sensor */
+  if(!mag.begin())
+  {
+    /* There was a problem detecting the HMC5883 ... check your connections */
+    Serial.println("Ooops, no HMC5883 detected ... Check your wiring!");
+    while(1);
+  }
+  /* Display some basic information on this sensor */
+  displaySensorDetails();
+
+
+
+
+  //UV
+  if (uv.begin() == false)
+  {
+    Serial.println("Unable to communicate with VEML6075.");
+    while (1)
+      ;
+  }
+  Serial.println("UVA, UVB, UV Index");
+
+  
 
   SD.begin(SD_CS);  
   if(!SD.begin(SD_CS)) {
@@ -90,8 +118,7 @@ void setup()
   else {
     Serial.println("File already exists");  
   }
-  file.close();
-}
+  file.close(); 
 }
 
 
@@ -100,202 +127,106 @@ void loop()
 {  
   
   if(receiver.available()) //check incoming on other serial from the other board
-  { 
-    //float stor = receiver.parseFloat();
+  {
     String ricky = receiver.readString();
-    //Serial.println(stor);
     Serial.println(ricky);
     
     //String dataMessage = String(stor) + "\n" + "asdf";
     //appendFile(SD, "/tester.txt", dataMessage.c_str());
 
-    String dataMessage = "";
-    dataMessage = "\n" + ricky;
+    dataMessage = "FROM MASTER: \n" + ricky;
     appendFile(SD, "/dump.txt", dataMessage.c_str());  
   }
 
 
+  Serial.println("CLIENT SENSORS: ");
+  String dataMessage = "CLIENT SENSORS: \n";
+  appendFile(SD, "/dump.txt", dataMessage.c_str());
+  
+  //RUN TMP
+  temp = sensor1.readTempC();
+  Serial.print("TMP117 Temperature: "); Serial.print(temp); Serial.println("*C");
+  dataMessage = "TMP117 Temperature: " + String(temp) + " *C";
+  appendFile(SD, "/dump.txt", dataMessage.c_str());
 
+
+
+  //RUN BAROMETER MPL
   if (! baro.begin()) {
-    Serial.println("Couldnt find sensor");
+    Serial.println("Couldn't find sensor");
     return;
   }
-  
-  float pascals = baro.getPressure();
   // Our weather page presents pressure in Inches (Hg)
   // Use http://www.onlineconversion.com/pressure.htm for other units
+  float pascals = baro.getPressure();
   Serial.print(pascals/3377); Serial.println(" Inches (Hg)");
-
   float altm = baro.getAltitude();
-  Serial.print(altm); Serial.println(" meters");
-
+  Serial.print("Altitude: "); Serial.print(altm); Serial.println(" meters");
   float tempC = baro.getTemperature();
-  Serial.print(tempC); Serial.println("*C");
-
+  Serial.print("TMP102 (aka VML) Temperature: "); Serial.print(tempC); Serial.println("*C");
   delay(250);
-  // Use the uva, uvb, and index functions to read calibrated UVA and UVB values and a
-  // calculated UV index value between 0-11.
-  Serial.println(String(uv.uva()) + " UVA, " + String(uv.uvb()) + " UVB, " + String(uv.index()) + " UV Index");
-  delay(250);
-  // Accelerometer Readings
-  int x,y,z;   
-  adxl.readAccel(&x, &y, &z);         // Read the accelerometer values and store them in variables declared above x,y,z
+  dataMessage = "Pressure: " + String(pascals/3377) + " Inches (Hg);\n"
+                + "Altitude: "+ String(altm) + " meters;\n"
+                + "TMP102 (aka VML) Temperature: "+ String(tempC) + " *C\n";
+  appendFile(SD, "/dump.txt", dataMessage.c_str());
 
-  // Output Results to Serial
-  /* UNCOMMENT TO VIEW X Y Z ACCELEROMETER VALUES */  
-  Serial.print(x);
-  Serial.print(", ");
-  Serial.print(y);
-  Serial.print(", ");
-  Serial.println(z); 
 
+
+
+  /*HMC MAGNETOMETER: Display the results (magnetic vector values are in micro-Tesla (uT)) */
   sensors_event_t event; 
-  mag.getEvent(&event);
- 
-  /* Display the results (magnetic vector values are in micro-Tesla (uT)) */
+  mag.getEvent(&event);  
   Serial.print("X: "); Serial.print(event.magnetic.x); Serial.print("  ");
   Serial.print("Y: "); Serial.print(event.magnetic.y); Serial.print("  ");
   Serial.print("Z: "); Serial.print(event.magnetic.z); Serial.print("  ");Serial.println("uT");
-
   // Hold the module so that Z is pointing 'up' and you can measure the heading with x&y
   // Calculate heading when the magnetometer is level, then correct for signs of axis.
   float heading = atan2(event.magnetic.y, event.magnetic.x);
-  
   // Once you have your heading, you must then add your 'Declination Angle', which is the 'Error' of the magnetic field in your location.
   // Find yours here: http://www.magnetic-declination.com/
   // Mine is: -13* 2' W, which is ~13 Degrees, or (which we need) 0.22 radians
   // If you cannot find your Declination, comment out these two lines, your compass will be slightly off.
   float declinationAngle = 0.22;
   heading += declinationAngle;
-  
   // Correct for when signs are reversed.
   if(heading < 0)
     heading += 2*PI;
-    
   // Check for wrap due to addition of declination.
   if(heading > 2*PI)
     heading -= 2*PI;
-   
   // Convert radians to degrees for readability.
-  float headingDegrees = heading * 180/M_PI; 
-  
+  float headingDegrees = heading * 180/M_PI;
   Serial.print("Heading (degrees): "); Serial.println(headingDegrees);
-  
   delay(500);
-  /*  IF tempSensor = 1 Utilizing a Temperature Sensor             */
-  /*  IF tempSensor = 0 Utilizing a Static Value for Temperature   */
-  if (tempSensor == 1) {
-    temp = getTemperature();        // Get Temperature Sensor Reading
-  } else if (tempSensor == 0) {
-    temp = 25;                      // Static Temperature Value in C
-                                    // Set by User to Desired Temperature                            
-  } else {
-    while (tempSensor != 1 || tempSensor != 0){
-      Serial.println("ERROR: tempSensor Value Out of Range");
-    }
-  }
-
-  printData(sensorSpecs, temp);     // Print Sensor Readings
-  Serial.println("");               // Return Space Between Readings
-  delay(100);                       // Slow Down Serial Output
+  dataMessage = "X: " + String(event.magnetic.x) + "  "
+                + "Y: "+ String(event.magnetic.y) + "  "
+                + "Z: "+ String(event.magnetic.z) + "  uT \n"
+                + "Heading (degrees): " + String(headingDegrees);
+  appendFile(SD, "/dump.txt", dataMessage.c_str());
 
 
-  temp1 = sensor1.readTempC();
-  Serial.print("TMP117: "); Serial.print(temp1);
+
+
+  
+  // Use the uva, uvb, and index functions to read calibrated UVA and UVB values and a
+  // calculated UV index value between 0-11.
+  UVA = uv.uva();
+  UVB = uv.uvb();
+  UV_INDEX = uv.index();
+  Serial.println(String(uv.uva()) + " UVA, " + String(uv.uvb()) + " UVB, " + String(uv.index()) + " UV Index");
+  delay(250);
+  dataMessage = "UV Readings: " + String(UVA) + "  UVA,"
+                + String(UVB) + "  UVB,"
+                + String(UV_INDEX) + "  UV Index";
+  appendFile(SD, "/dump.txt", dataMessage.c_str());
+
+
+  delay(60000);
+
 }
 
 
 
-
-
-void displaySensorDetails(void)
-{
-  sensor_t sensor;
-  mag.getSensor(&sensor);
-  Serial.println("------------------------------------");
-  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
-  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
-  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
-  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" uT");
-  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" uT");
-  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" uT");  
-  Serial.println("------------------------------------");
-  Serial.println("");
-  delay(500);
-
-
-  Serial.begin(115200);
-  Serial.println("Adafruit_MPL3115A2 test!");
-  Wire.begin();
-
-  // the VEML6075's begin function can take no parameters
-  // It will return true on success or false on failure to communicate
-  if (uv.begin() == false)
-  {
-    Serial.println("Unable to communicate with VEML6075.");
-    while (1)
-      ;
-  }
-  Serial.println("UVA, UVB, UV Index");
-  Serial.println("SparkFun ADXL345 Accelerometer Hook Up Guide Example");
-  Serial.println();
-  
-  adxl.powerOn();                     // Power on the ADXL345
-
-  adxl.setRangeSetting(4);           // Give the range settings
-                                      // Accepted values are 2g, 4g, 8g or 16g
-                                      // Higher Values = Wider Measurement Range
-                                      // Lower Values = Greater Sensitivity
-
-  adxl.setSpiBit(0);                  // Configure the device to be in 4 wire SPI mode when set to '0' or 3 wire SPI mode when set to 1
-                                      // Default: Set to 1
-                                      // SPI pins on the ATMega328: 11, 12 and 13 as reference in SPI Library 
-   
-  adxl.setActivityXYZ(1, 1, 1);       // Set to activate movement detection in the axes "adxl.setActivityXYZ(X, Y, Z);" (1 == ON, 0 == OFF)
-  adxl.setActivityThreshold(75);      // 62.5mg per increment   // Set activity   // Inactivity thresholds (0-255)
- 
-  adxl.setInactivityXYZ(1, 1, 1);     // Set to detect inactivity in all the axes "adxl.setInactivityXYZ(X, Y, Z);" (1 == ON, 0 == OFF)
-  adxl.setInactivityThreshold(75);    // 62.5mg per increment   // Set inactivity // Inactivity thresholds (0-255)
-  adxl.setTimeInactivity(10);         // How many seconds of no activity is inactive?
-
-  adxl.setTapDetectionOnXYZ(1, 1, 1); // Detect taps in the directions turned ON "adxl.setTapDetectionOnX(X, Y, Z);" (1 == ON, 0 == OFF)
- 
-  // Set values for what is considered a TAP and what is a DOUBLE TAP (0-255)
-  adxl.setTapThreshold(50);           // 62.5 mg per increment
-  adxl.setTapDuration(15);            // 625 μs per increment
-  adxl.setDoubleTapLatency(80);       // 1.25 ms per increment
-  adxl.setDoubleTapWindow(200);       // 1.25 ms per increment
- 
-  // Set values for what is considered FREE FALL (0-255)
-  adxl.setFreeFallThreshold(7);       // (5 - 9) recommended - 62.5mg per increment
-  adxl.setFreeFallDuration(30);       // (20 - 70) recommended - 5ms per increment
- 
-  // Setting all interupts to take place on INT1 pin
-  //adxl.setImportantInterruptMapping(1, 1, 1, 1, 1);     // Sets "adxl.setEveryInterruptMapping(single tap, double tap, free fall, activity, inactivity);" 
-                                                        // Accepts only 1 or 2 values for pins INT1 and INT2. This chooses the pin on the ADXL345 to use for Interrupts.
-                                                        // This library may have a problem using INT2 pin. Default to INT1 pin.
-  
-  // Turn on Interrupts for each mode (1 == ON, 0 == OFF)
-  adxl.InactivityINT(1);
-  adxl.ActivityINT(1);
-  adxl.FreeFallINT(1);
-  adxl.doubleTapINT(1);
-  adxl.singleTapINT(1);
-  
-//attachInterrupt(digitalPinToInterrupt(interruptPin), ADXL_ISR, RISING);   // Attach Interrupt
-  Serial.println("HMC5883 Magnetometer Test"); Serial.println("");
-  
-  /* Initialise the sensor */
-  if(!mag.begin())
-  {
-    /* There was a problem detecting the HMC5883 ... check your connections */
-    Serial.println("Ooops, no HMC5883 detected ... Check your wiring!");
-    while(1);
-  }
-  
-  /* Display some basic information on this sensor */
-  displaySensorDetails();
-}
 
 
 /* Serial Output of Temperature C, Sensor Voltage V, SensorRH %, and TrueRH % */
@@ -362,6 +293,44 @@ float getTemperature(){
   return celsius;
   
 }
+
+
+
+
+
+
+//HMC
+void displaySensorDetails(void)
+{
+  sensor_t sensor;
+  mag.getSensor(&sensor);
+  Serial.println("------------------------------------");
+  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
+  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
+  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
+  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" uT");
+  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" uT");
+  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" uT");  
+  Serial.println("------------------------------------");
+  Serial.println("");
+  delay(500);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
