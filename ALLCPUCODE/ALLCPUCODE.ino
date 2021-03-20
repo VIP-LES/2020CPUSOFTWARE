@@ -28,7 +28,7 @@
 
 //other configuration option definitions
 #define MIN_TEMP_SINGLE 10.0 //degrees celsius
-#define MIN_TEMP_AVG 18.0
+#define MIN_TEMP_AVG 15.0
 #define MAX_TEMP_SINGLE 20.0
 #define MAX_TEMP_AVG 22.0
 #define HEATER_CHECK_TIME 500 //in milliseconds
@@ -316,7 +316,7 @@ void heater() { //Contains the loop code for the heater system
     //Serial.print(" | Temperature 4: "); Serial.print(temp4);
     Serial.print(" | Average: "); Serial.println((temp1 + temp2 /*+ temp3 + temp4*/)/2.0/*4.0*/);
     
-    if(heater_state == 0) {
+//    if(heater_state == 0) {
       if(temp1 < MIN_TEMP_SINGLE || temp2 < MIN_TEMP_SINGLE /*|| temp3 < MIN_TEMP_SINGLE || temp4 < MIN_TEMP_SINGLE*/) {
         heater_state = 1;
         digitalWrite(HEATER_OUTPUT, HIGH);
@@ -324,17 +324,23 @@ void heater() { //Contains the loop code for the heater system
         heater_state = 2;
         digitalWrite(HEATER_OUTPUT, HIGH);
       }
-    } else if(heater_state == 1) {
-      if(temp1 > MAX_TEMP_SINGLE && temp2 > MAX_TEMP_SINGLE /*&& temp3 > MAX_TEMP_SINGLE && temp4 > MAX_TEMP_SINGLE*/) {
-        heater_state = 0;
-        digitalWrite(HEATER_OUTPUT, LOW);
+
+      if(temp1 < MAX_TEMP_SINGLE || temp2 < MAX_TEMP_SINGLE || (temp1 + temp2 /*+ temp3 + temp4*/) / 2.0/*4.0*/ > MAX_TEMP_AVG)
+      {
+        digitalWrite(HEATER_OUTPUT, LOW);  
       }
-    } else if(heater_state == 2) {
-      if( (temp1 + temp2 /*+ temp3 + temp4*/) / 2.0/*4.0*/ > MAX_TEMP_AVG) {
-        heater_state = 0;
-        digitalWrite(HEATER_OUTPUT, LOW);
-      }
-    }
+//    }
+//    else if(heater_state == 1) {
+//      if(temp1 > MAX_TEMP_SINGLE && temp2 > MAX_TEMP_SINGLE /*&& temp3 > MAX_TEMP_SINGLE && temp4 > MAX_TEMP_SINGLE*/) {
+//        heater_state = 0;
+//        digitalWrite(HEATER_OUTPUT, LOW);
+//      }
+//    } else if(heater_state == 2) {
+//      if( (temp1 + temp2 /*+ temp3 + temp4*/) / 2.0/*4.0*/ > MAX_TEMP_AVG) {
+//        heater_state = 0;
+//        digitalWrite(HEATER_OUTPUT, LOW);
+//      }
+//    }
 
     logTemperature();
     
@@ -428,7 +434,7 @@ void geofenceCheck() {    //Run every time there's new GPS data available
 
   if (distance >= CUTDOWN_DISTANCE) {
     triggerCutdown();
-  }
+}
  
 //  pastLatitudeDisplacement[avgFramePos] = latitude - lastLatitude;
 //  pastLongitudeDisplacement[avgFramePos] = longitude - lastLongitude;
@@ -469,14 +475,15 @@ void geofenceCheck() {    //Run every time there's new GPS data available
 void checkTimeCutdown() {
   if(launched) {
     if(myGPS.getTimeValid()) {
-      if( (last_valid_GPS_time - launch_time) > TIME_UNTIL_CUTDOWN ) {
-        triggerCutdown();
-      }
-    } else {
-      if( (last_valid_GPS_time - launch_time) + (millis() - time_last_GPS) > TIME_UNTIL_CUTDOWN ) {
+      if( (last_valid_GPS_time - launch_time) > TIME_UNTIL_CUTDOWN && (altitude/1000) > 800) {
         triggerCutdown();
       }
     }
+//    else {
+//      if( (last_valid_GPS_time - launch_time) + (millis() - time_last_GPS) > TIME_UNTIL_CUTDOWN ) {
+//        triggerCutdown();
+//      }
+//    }
   }
 }
 
@@ -515,7 +522,6 @@ void logTime() {
 void triggerCutdown()
 {
   //Placeholder for now
-  
   digitalWrite(CUTDOWN_SIGNAL, HIGH);
 }
 

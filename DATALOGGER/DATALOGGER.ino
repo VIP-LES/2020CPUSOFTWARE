@@ -86,8 +86,6 @@ void setup()
   if (uv.begin() == false)
   {
     Serial.println("Unable to communicate with VEML6075.");
-    while (1)
-      ;
   }
   Serial.println("UVA, UVB, UV Index");
 
@@ -111,9 +109,9 @@ void setup()
 
   File file = SD.open("/dump.txt");
   if(!file) {
-    Serial.println("File tester.txt doesn't exist");
+    Serial.println("File dump.txt doesn't exist");
     Serial.println("Creating file...");
-    //writeFile(SD, "/dump.txt", "File created\n");
+    writeFile(SD, "/dump.txt", "File created\n");
   }
   else {
     Serial.println("File already exists");  
@@ -154,7 +152,6 @@ void loop()
   //RUN BAROMETER MPL
   if (! baro.begin()) {
     Serial.println("Couldn't find sensor");
-    return;
   }
   // Our weather page presents pressure in Inches (Hg)
   // Use http://www.onlineconversion.com/pressure.htm for other units
