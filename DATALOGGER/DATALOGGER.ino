@@ -2,13 +2,13 @@
 #include <SD.h>
 
 #include <Wire.h>
-#include <Adafruit_MPL3115A2.h>
-#include <SparkFun_VEML6075_Arduino_Library.h>
-#include <SparkFun_ADXL345.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_HMC5883_U.h>
-#include <SparkFun_HIH4030.h>
-#include <SparkFun_TMP117.h>
+#include <Adafruit_MPL3115A2.h> //https://github.com/adafruit/Adafruit_MPL3115A2_Library/blob/master/Adafruit_MPL3115A2.h
+#include <SparkFun_VEML6075_Arduino_Library.h> //https://github.com/sparkfun/SparkFun_VEML6075_Arduino_Library
+#include <SparkFun_ADXL345.h> //https://github.com/sparkfun/SparkFun_ADXL345_Arduino_Library/blob/master/src/SparkFun_ADXL345.h
+#include <Adafruit_Sensor.h> //https://github.com/adafruit/Adafruit_Sensor/blob/master/Adafruit_Sensor.h
+#include <Adafruit_HMC5883_U.h> //https://github.com/adafruit/Adafruit_HMC5883_Unified/blob/master/Adafruit_HMC5883_U.h
+#include <SparkFun_HIH4030.h> //https://github.com/sparkfun/SparkFun_HIH4030_Arduino_Library
+#include <SparkFun_TMP117.h> //arduino library
 #include "FS.h"
 #include <sstream>
 
