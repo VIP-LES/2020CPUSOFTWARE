@@ -149,67 +149,6 @@ void setup() {
   myGPS.setI2COutput(COM_TYPE_UBX); //Set the I2C port to output UBX only (turn off NMEA noise)
   myGPS.saveConfiguration(); //Save the current settings to flash and BBR
   
-  //SD card
-//  SD.begin(SD_CS);  
-//  if(!SD.begin(SD_CS)) {
-//    Serial.println("Card Mount Failed");
-//    SDstatus = false;
-//  }
-//  uint8_t cardType = SD.cardType();
-//  if(cardType == CARD_NONE) {
-//    Serial.println("No SD card attached");
-//    SDstatus = false;
-//  }
-//  Serial.println("Initializing SD card...");
-//  if (!SD.begin(SD_CS)) {
-//    Serial.println("ERROR - SD card initialization failed!");
-//    SDstatus = false;
-//  }
-//
-//  //Create files for logging data
-//  File file = SD.open("/temperature_data.csv");
-//  if(!file) {
-//    Serial.println("File temperature_data.csv doesn't exist");
-//    Serial.println("Creating file...");
-//    writeFile(SD, "/temperature_data.csv", "MCU Time,GPS Time,Heater State,Temp 1,Temp 2\r\n"/*"MCU Time,GPS Time,Heater State,Temp 1,Temp 2,Temp 3,Temp 4\r\n"*/);
-//  }
-//  else {
-//    Serial.println("File already exists");  
-//  }
-//  file.close();
-//  
-//  file = SD.open("/GPS_data.csv");
-//  if(!file) {
-//    Serial.println("File GPS_data.csv doesn't exist");
-//    Serial.println("Creating file...");
-//    writeFile(SD, "/GPS_data.csv", "MCU Time,GPS Time,Latitude,Longitude,Altitude,SIV,Ground Speed,Heading\r\n");
-//  }
-//  else {
-//    Serial.println("File already exists");  
-//  }
-//  file.close();
-//
-//  file = SD.open("/battery_data.csv");
-//  if(!file) {
-//    Serial.println("File battery_data.csv doesn't exist");
-//    Serial.println("Creating file...");
-//    writeFile(SD, "/battery_data.csv", "MCU Time,GPS Time,Battery 1 Voltage,Battery 2 Voltage,Battery 3 Voltage\r\n");
-//  }
-//  else {
-//    Serial.println("File already exists");  
-//  }
-//  file.close();
-//
-//  file = SD.open("/time_data.csv");
-//  if(!file) {
-//    Serial.println("File time_data.csv doesn't exist");
-//    Serial.println("Creating file...");
-//    writeFile(SD, "/time_data.csv", "Microcontroller Time,GPS Time,Ublox Time Valid,Ublox Date Valid\r\n");
-//  }
-//  else {
-//    Serial.println("File already exists");  
-//  }
-//  file.close();
 
 }
 
@@ -252,29 +191,29 @@ void wifi() {
             }
              
             // Display the HTML web page  
-            client.println("<!DOCTYPE html> <html>\n");
-            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n");
+            client.println("<!DOCTYPE html> <html>\n");//start doc
+            client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0, user-scalable=no\">\n");//make
             client.println("<title>Dashboard</title>\n");
-            client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n");
-            client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px;");
-            client.println("body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n");
-            client.println("p {font-size: 14px;color: #888;margin-bottom: 10px;}\n");
+            client.println("<style>html { font-family: Helvetica; display: inline-block; margin: 0px auto; text-align: center;}\n");//set font style
+            client.println(".button { background-color: #4CAF50; border: none; color: white; padding: 16px 40px;");//set button style
+            client.println("body{margin-top: 50px;} h1 {color: #444444;margin: 50px auto 30px;} h3 {color: #444444;margin-bottom: 50px;}\n");//create body of page
+            client.println("p {font-size: 14px;color: #888;margin-bottom: 10px;}\n");//set font settings
             client.println("</style>\n");
             client.println("</head>\n");
             client.println("<body>\n");
-            client.println("<h1>ESP32 Web Server</h1>\n");
-            client.println("<h3>Lightning at the Edge of Space VIP</h3>\n");
+            client.println("<h1>ESP32 Web Server</h1>\n");//set heading
+            client.println("<h3>Lightning at the Edge of Space VIP</h3>\n");//set subheading
               if (!launched) {
-                client.println("<p><a href=\"/launched/on\"><button class=\"button\">PRESS TO LAUNCH</button></a></p>");
+                client.println("<p><a href=\"/launched/on\"><button class=\"button\">PRESS TO LAUNCH</button></a></p>");//makes button press to launch if not yet launched
               } else {
-                client.println("<p><a href=\"/launched/off\"><button class=\"button button2\">LAUNCHED</button></a></p>");
+                client.println("<p><a href=\"/launched/off\"><button class=\"button button2\">LAUNCHED</button></a></p>");////makes button say launched if launches
               } 
               if(GPSstatus)
-                {client.println("<p>GPS is connected and working properly</p>\n");}
+                {client.println("<p>GPS is connected and working properly</p>\n");} // says gps is working if data valid
               else
-                {client.println("<p>GPS is not properly working</p>\n");}
-              client.println("<p>Longitude:" + String(longitudeHTML) + " </p> \n");
-              client.println("<p>Latitude:" + String(latitudeHTML) + " </p> \n");
+                {client.println("<p>GPS is not properly working</p>\n");} //says gps is not working if data invalid(zeros)
+              client.println("<p>Longitude:" + String(longitudeHTML) + " </p> \n");//print longitude
+              client.println("<p>Latitude:" + String(latitudeHTML) + " </p> \n");//print latitiyde
     
             // The HTTP response ends with another blank line
             client.println();
@@ -342,7 +281,6 @@ void heater() { //Contains the loop code for the heater system
 //      }
 //    }
 
-    logTemperature();
     
     next_heater_check = millis() + HEATER_CHECK_TIME; //Wait and check temperatures again
   }
@@ -396,15 +334,11 @@ void GPS() {//Contains code for getting GPS position
 
     geofenceCheck(); //Run the geofence check only after the GPS subroutine has pulled new data from the GPS
 
-    logGPS();
-    logTime();
 
     if(myGPS.getTimeValid()) {
       last_valid_GPS_time = getGPSTime();
       time_last_GPS = millis();
     }
-
-    checkTimeCutdown();
   }
 }
 
@@ -420,56 +354,7 @@ void readBatteryVoltage() {
 
     next_battery_check = millis() + BATTERY_CHECK_TIME;
 
-    logBattery();
   }
-}
-
-void geofenceCheck() {    //Run every time there's new GPS data available
-  //Record current latitude and longitude displacement for averaging
-
-  disY = latitude - fixedLat;
-  disX = longitude - fixedLong;
-
-  float distance = sqrt(sq(disY) + sq(disX));
-
-  if (distance >= CUTDOWN_DISTANCE) {
-    triggerCutdown();
-}
- 
-//  pastLatitudeDisplacement[avgFramePos] = latitude - lastLatitude;
-//  pastLongitudeDisplacement[avgFramePos] = longitude - lastLongitude;
-//  avgFramePos++;
-//  avgFramePos = avgFramePos % DISPLACEMENT_AVG_FRAME;
-//
-//  //Determine average latitude and longitude drift rate
-//  float latSum, longSum;
-//  for(int i = 0; i < DISPLACEMENT_AVG_FRAME; i++){
-//    latSum = latSum + pastLatitudeDisplacement[i];
-//    longSum = longSum + pastLongitudeDisplacement[i];
-//  }
-//  float latDriftRate = latSum / (DISPLACEMENT_AVG_FRAME * GPS_CHECK_TIME);
-//  float longDriftRate = longSum / (DISPLACEMENT_AVG_FRAME * GPS_CHECK_TIME);
-//
-//  //Find predicted latitude and longitude of landing position
-//  float latPredicted = latDriftRate * (altitude / 1000 / DESCENT_RATE); //Altitude is given by the gps in mm
-//  float longPredicted = longDriftRate * (altitude / 1000 / DESCENT_RATE);
-//
-//  //Find if cutdown is required
-//  if( (latPredicted / 10000000) < 30.736 ) { //latitude and longitude are given by the GPS in degrees * 10^7
-//    triggerCutdown();
-//  } else if( (latPredicted / 10000000) < 32.851 ) {
-//    if( (longPredicted / 10000000) > ((latPredicted / 10000000 / 2.2175) - 96.017) ) {
-//      triggerCutdown();
-//    }
-//  } else if( (latPredicted / 10000000) < 35.031 ) {
-//    if( (longPredicted / 10000000) > ((latPredicted / 10000000 / .63537) - 132.61) ) {
-//      triggerCutdown();
-//    }
-//  } else {
-//    if( (longPredicted / 10000000) > -77.468 ) {
-//      triggerCutdown();
-//    }
-//  }
 }
 
 void checkTimeCutdown() {
@@ -487,37 +372,8 @@ void checkTimeCutdown() {
   }
 }
 
-//Write temperature data to the corresponding file
-void logTemperature() {
-  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(heater_state) + "," + String(temp1) +
-                       "," + String(temp2) + /*"," + String(temp3) + "," + String(temp4) +*/ "\r\n";
-  //appendFile(SD, "/temperature_data.csv", dataMessage.c_str());
-  sender.println(dataMessage); //send directly to sender
-}
 
-//Write GPS data to the corresponding file
-void logGPS() {
-  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(latitude) + "," + String(longitude) + "," +
-                       String(altitude) + "," + String(SIV) + "," + String(myGPS.getGroundSpeed()) + "," +
-                       String(myGPS.getHeading()) + "\r\n";
-//  appendFile(SD, "/GPS_data.csv", dataMessage.c_str());
-  sender.println(dataMessage); //send directly to sender
-}
 
-//Write battery data to the corresponding file
-void logBattery() {
-  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(batt_1_voltage) + "," + String(batt_2_voltage) + "," + String(batt_3_voltage) + "\r\n";
-//  appendFile(SD, "/battery_data.csv", dataMessage.c_str());
-  sender.println(dataMessage); //send directly to sender
-}
-
-//Write mcu/gps time data to the corresponding file
-void logTime() {
-  String dataMessage = String(millis()) + "," + String(getGPSTime()) + "," + String(myGPS.getTimeValid()) + 
-                       "," + String(myGPS.getDateValid()) + "\r\n";
-//  appendFile(SD, "/time_data.csv", dataMessage.c_str());
-  sender.println(dataMessage); //send directly to sender
-}
 
 void triggerCutdown()
 {
@@ -529,38 +385,4 @@ void triggerCutdown()
 //Note that zero for this time is midnight on the first of the month, so it "overflows" back to zero then.
 unsigned long getGPSTime() {
   return (((myGPS.getDay() * 24 + myGPS.getHour()) * 60 + myGPS.getMinute()) * 60 + myGPS.getSecond()) * 1000 + myGPS.getMillisecond();
-}
-
-// Write to the SD card (DON'T MODIFY THIS FUNCTION)
-void writeFile(fs::FS &fs, const char * path, const char * message) {
-  Serial.printf("Writing file: %s\n", path);
-
-  File file = fs.open(path, FILE_WRITE);
-  if(!file) {
-    Serial.println("Failed to open file for writing");
-    return;
-  }
-  if(file.print(message)) {
-    Serial.println("File written");
-  } else {
-    Serial.println("Write failed");
-  }
-  file.close();
-}
-
-// Append data to the SD card (DON'T MODIFY THIS FUNCTION)
-void appendFile(fs::FS &fs, const char * path, const char * message) {
-  Serial.printf("Appending to file: %s\n", path);
-
-  File file = fs.open(path, FILE_APPEND);
-  if(!file) {
-    Serial.println("Failed to open file for appending");
-    return;
-  }
-  if(file.print(message)) {
-    Serial.println("Message appended");
-  } else {
-    Serial.println("Append failed");
-  }
-  file.close();
 }
